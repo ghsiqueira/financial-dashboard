@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cadastro - Dashboard Financeiro</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    
+    <style>
+        body {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .register-container {
+            background: white;
+            border-radius: 1rem;
+            box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.175);
+            overflow: hidden;
+            max-width: 900px;
+            width: 100%;
+        }
+        
+        .register-form {
+            padding: 3rem;
+        }
+        
+        .register-hero {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+            padding: 3rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            text-align: center;
+        }
+        
+        .form-floating {
+            margin-bottom: 1rem;
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            border: none;
+            padding: 0.75rem 2rem;
+            font-weight: 600;
+        }
+        
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+        }
+        
+        .brand {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+        }
+        
+        .hero-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            opacity: 0.9;
+        }
+        
+        .password-requirements {
+            font-size: 0.85rem;
+            color: #6c757d;
+        }
+        
+        .password-requirements .requirement {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.25rem;
+        }
+        
+        .requirement.valid {
+            color: #198754;
+        }
+        
+        .requirement.invalid {
+            color: #dc3545;
+        }
+        
+        @media (max-width: 768px) {
+            .register-container {
+                margin: 1rem;
+            }
+            
+            .register-form, .register-hero {
+                padding: 2rem;
+            }
+            
+            .hero-icon {
+                font-size: 3rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <div class="register-container">
+                    <div class="row g-0">
+                        <!-- Register Form -->
+                        <div class="col-lg-6">
+                            <div class="register-form">
+                                <div class="text-center mb-4">
+                                    <h2 class="fw-bold">Crie sua conta</h2>
+                                    <p class="text-muted">Comece a organizar suas finanças hoje</p>
+                                </div>
+                                
+                                <!-- Alertas -->
+                                {% with messages = get_flashed_messages(with_categories=true) %}
+                                    {% if messages %}
+                                        {% for category, message in messages %}
+                                            <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                                                <i class="bi bi-{{ 'exclamation-triangle' if category == 'error' else 'info-circle' }}-fill"></i>
+                                                {{ message }}
+                                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                                            </div>
+                                        {% endfor %}
+                                    {% endif %}
+                                {% endwith %}
+                                
+                                <!-- Formulário de Cadastro -->
+                                <form method="POST" id="registerForm">
+                                    <div class="form-floating">
+                                        <input type="text" class="form-control" id="name" name="name" 
+                                               placeholder="Seu nome completo" required value="{{ name or '' }}">
+                                        <label for="name">
+                                            <i class="bi bi-person"></i> Nome completo
+                                        </label>
+                                    </div>
+                                    
+                                    <div class="form-floating">
+                                        <input type="email" class="form-control" id="email" name="email" 
+                                               placeholder="name@example.com" required value="{{ email or '' }}">
+                                        <label for="email">
+                                            <i class="bi bi-envelope"></i> Email
+                                        </label>
+                                    </div>
+                                    
+                                    <div class="form-floating">
+                                        <input type="password" class="form-control" id="password" name="password" 
+                                               placeholder="Password" required>
+                                        <label for="password">
+                                            <i class="bi bi-lock"></i> Senha
+                                        </label>
+                                    </div>
+                                    
+                                    <div class="form-floating">
+                                        <input type="password" class="form-control" id="confirm_password" name="confirm_password" 
+                                               placeholder="Confirm Password" required>
+                                        <label for="confirm_password">
+                                            <i class="bi bi-lock-fill"></i> Confirmar senha
+                                        </label>
+                                    </div>
+                                    
+                                    <!-- Requisitos da senha -->
+                                    <div class="password-requirements mb-3">
+                                        <small>Requisitos da senha:</small>
+                                        <div class="requirement" id="req-length">
+                                            <i class="bi bi-circle me-2"></i>
+                                            Pelo menos 6 caracteres
+                                        </div>
+                                        <div class="requirement" id="req-match">
+                                            <i class="bi bi-circle me-2"></i>
+                                            Senhas devem ser iguais
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="form-check mb-4">
+                                        <input class="form-check-input" type="checkbox" id="terms" name="terms" required>
+                                        <label class="form-check-label" for="terms">
+                                            Concordo com os <a href="#" class="text-decoration-none">Termos de Uso</a> 
+                                            e <a href="#" class="text-decoration-none">Política de Privacidade</a>
+                                        </label>
+                                    </div>
+                                    
+                                    <button type="submit" class="btn btn-success w-100 mb-3" id="registerBtn">
+                                        <i class="bi bi-person-plus"></i> Criar conta
+                                    </button>
+                                </form>
+                                
+                                <div class="text-center">
+                                    <p class="mb-0">Já tem uma conta? 
+                                        <a href="{{ url_for('auth.login') }}" class="text-decoration-none fw-bold">
+                                            Faça login aqui
+                                        </a>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Hero Section -->
+                        <div class="col-lg-6">
+                            <div class="register-hero h-100">
+                                <div>
+                                    <div class="hero-icon">
+                                        <i class="bi bi-graph-up-arrow"></i>
+                                    </div>
+                                    <div class="brand">FinanceDash</div>
+                                    <h4 class="mb-3">Transforme sua vida financeira</h4>
+                                    <p class="mb-4">
+                                        Junte-se a milhares de usuários que já organizaram suas finanças com nossa plataforma.
+                                        Recursos completos para você e sua família.
+                                    </p>
+                                    
+                                    <div class="mb-4">
+                                        <h6>✨ O que você ganha:</h6>
+                                        <ul class="list-unstyled">
+                                            <li class="mb-2">
+                                                <i class="bi bi-check-circle-fill me-2"></i>
+                                                Dashboard completo e intuitivo
+                                            </li>
+                                            <li class="mb-2">
+                                                <i class="bi bi-check-circle-fill me-2"></i>
+                                                Contas familiares e individuais
+                                            </li>
+                                            <li class="mb-2">
+                                                <i class="bi bi-check-circle-fill me-2"></i>
+                                                Relatórios e gráficos detalhados
+                                            </li>
+                                            <li class="mb-2">
+                                                <i class="bi bi-check-circle-fill me-2"></i>
+                                                Importação de extratos
+                                            </li>
+                                            <li class="mb-2">
+                                                <i class="bi bi-check-circle-fill me-2"></i>
+                                                Controle de orçamentos
+                                            </li>
+                                        </ul>
+                                    </div>
+                                    
+                                    <div class="text-center">
+                                        <small class="opacity-75">
+                                            <i class="bi bi-shield-check"></i>
+                                            Seus dados estão seguros conosco
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('registerForm');
+            const submitBtn = document.getElementById('registerBtn');
+            const passwordInput = document.getElementById('password');
+            const confirmPasswordInput = document.getElementById('confirm_password');
+            const nameInput = document.getElementById('name');
+            const emailInput = document.getElementById('email');
+            
+            // Auto-dismiss alerts
+            const alerts = document.querySelectorAll('.alert');
+            alerts.forEach(alert => {
+                setTimeout(() => {
+                    const bsAlert = new bootstrap.Alert(alert);
+                    bsAlert.close();
+                }, 5000);
+            });
+            
+            // Validação em tempo real da senha
+            function validatePassword() {
+                const password = passwordInput.value;
+                const confirmPassword = confirmPasswordInput.value;
+                
+                // Requisito de comprimento
+                const lengthReq = document.getElementById('req-length');
+                if (password.length >= 6) {
+                    lengthReq.classList.add('valid');
+                    lengthReq.classList.remove('invalid');
+                    lengthReq.querySelector('i').className = 'bi bi-check-circle-fill me-2';
+                } else {
+                    lengthReq.classList.add('invalid');
+                    lengthReq.classList.remove('valid');
+                    lengthReq.querySelector('i').className = 'bi bi-x-circle-fill me-2';
+                }
+                
+                // Requisito de confirmação
+                const matchReq = document.getElementById('req-match');
+                if (password && confirmPassword && password === confirmPassword) {
+                    matchReq.classList.add('valid');
+                    matchReq.classList.remove('invalid');
+                    matchReq.querySelector('i').className = 'bi bi-check-circle-fill me-2';
+                    confirmPasswordInput.classList.remove('is-invalid');
+                    confirmPasswordInput.classList.add('is-valid');
+                } else if (confirmPassword) {
+                    matchReq.classList.add('invalid');
+                    matchReq.classList.remove('valid');
+                    matchReq.querySelector('i').className = 'bi bi-x-circle-fill me-2';
+                    confirmPasswordInput.classList.add('is-invalid');
+                    confirmPasswordInput.classList.remove('is-valid');
+                } else {
+                    matchReq.classList.remove('valid', 'invalid');
+                    matchReq.querySelector('i').className = 'bi bi-circle me-2';
+                    confirmPasswordInput.classList.remove('is-invalid', 'is-valid');
+                }
+            }
+            
+            passwordInput.addEventListener('input', validatePassword);
+            confirmPasswordInput.addEventListener('input', validatePassword);
+            
+            // Validação do nome
+            nameInput.addEventListener('input', function() {
+                if (this.value.length >= 2) {
+                    this.classList.remove('is-invalid');
+                    this.classList.add('is-valid');
+                } else {
+                    this.classList.add('is-invalid');
+                    this.classList.remove('is-valid');
+                }
+            });
+            
+            // Validação do email
+            emailInput.addEventListener('input', function() {
+                const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (emailPattern.test(this.value)) {
+                    this.classList.remove('is-invalid');
+                    this.classList.add('is-valid');
+                } else {
+                    this.classList.add('is-invalid');
+                    this.classList.remove('is-valid');
+                }
+            });
+            
+            // Submissão do formulário
+            form.addEventListener('submit', function(e) {
+                const name = nameInput.value.trim();
+                const email = emailInput.value.trim();
+                const password = passwordInput.value;
+                const confirmPassword = confirmPasswordInput.value;
+                const terms = document.getElementById('terms').checked;
+                
+                // Validações
+                if (name.length < 2) {
+                    e.preventDefault();
+                    alert('Nome deve ter pelo menos 2 caracteres');
+                    nameInput.focus();
+                    return;
+                }
+                
+                if (!email.includes('@')) {
+                    e.preventDefault();
+                    alert('Por favor, insira um email válido');
+                    emailInput.focus();
+                    return;
+                }
+                
+                if (password.length < 6) {
+                    e.preventDefault();
+                    alert('Senha deve ter pelo menos 6 caracteres');
+                    passwordInput.focus();
+                    return;
+                }
+                
+                if (password !== confirmPassword) {
+                    e.preventDefault();
+                    alert('Senhas não conferem');
+                    confirmPasswordInput.focus();
+                    return;
+                }
+                
+                if (!terms) {
+                    e.preventDefault();
+                    alert('Você deve aceitar os termos de uso');
+                    return;
+                }
+                
+                // Show loading
+                submitBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Criando conta...';
+                submitBtn.disabled = true;
+            });
+        });
+    </script>
+</body>
+</html>
