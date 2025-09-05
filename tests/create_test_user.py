@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Script para criar usuário de teste no Dashboard Financeiro
-Execute: python create_test_user.py
+Execute: python tests/create_test_user.py (da raiz do projeto)
 """
 
 import sys
@@ -9,11 +9,23 @@ import os
 from datetime import datetime, timedelta
 import random
 
-# Adicionar o diretório do projeto ao path
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# Corrigir o path para encontrar o módulo app
+current_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(current_dir)
+
+# Adicionar a raiz do projeto ao Python path
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
+# Mudar para o diretório raiz do projeto
+os.chdir(project_root)
 
 def create_test_user():
     try:
+        print(f"📁 Diretório de trabalho: {os.getcwd()}")
+        print(f"🐍 Python path: {sys.path[0]}")
+        
+        # Agora importar os módulos
         from app import create_app, mongo
         from app.models import User, Transaction, Budget, Family
         
@@ -34,7 +46,9 @@ def create_test_user():
                 
                 # Remover usuário existente
                 mongo.db.users.delete_one({'email': 'demo@financedash.com'})
-                mongo.db.transactions.delete_many({'added_by': existing_user._id})
+                if hasattr(existing_user, '_id'):
+                    mongo.db.transactions.delete_many({'added_by': existing_user._id})
+                    mongo.db.budgets.delete_many({'owner_id': existing_user._id})
                 print("🗑️  Dados anteriores removidos.")
             
             # Criar usuário demo
@@ -164,14 +178,20 @@ def create_test_user():
             print(f"   • {budgets_created} orçamentos")
             print("   • 1 família com transações")
             print("   • Dados dos últimos 6 meses")
-            print("\n📁 Certifique-se de executar este script da raiz do projeto:")
-            print("   python tests/create_test_user.py")
             
     except ImportError as e:
         print(f"❌ Erro de importação: {e}")
-        print("Certifique-se de que está no diretório correto e instalou as dependências")
+        print(f"📁 Diretório atual: {os.getcwd()}")
+        print(f"📁 Python path: {sys.path[:3]}...")
+        print("\nVerifique se:")
+        print("1. Você está executando da raiz do projeto")
+        print("2. O arquivo app/__init__.py existe")
+        print("3. As dependências estão instaladas")
+        print("4. O arquivo .env está configurado")
     except Exception as e:
         print(f"❌ Erro: {e}")
+        import traceback
+        traceback.print_exc()
 
 def create_admin_user():
     """Criar usuário administrador"""
@@ -210,21 +230,60 @@ def create_admin_user():
     except Exception as e:
         print(f"❌ Erro: {e}")
 
+def test_imports():
+    """Testar se os imports funcionam"""
+    try:
+        print("🧪 Testando imports...")
+        print(f"📁 Diretório atual: {os.getcwd()}")
+        print(f"🐍 Python path: {sys.path[0]}")
+        
+        # Testar import do Flask
+        print("   • Testando Flask...")
+        import flask
+        print("   ✅ Flask OK")
+        
+        # Testar import do app
+        print("   • Testando app...")
+        from app import create_app
+        print("   ✅ App OK")
+        
+        # Testar criação do app
+        print("   • Testando create_app...")
+        app = create_app()
+        print("   ✅ Create app OK")
+        
+        # Testar models
+        print("   • Testando models...")
+        from app.models import User
+        print("   ✅ Models OK")
+        
+        print("\n✅ Todos os imports funcionaram!")
+        return True
+        
+    except Exception as e:
+        print(f"\n❌ Erro no teste de imports: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
 def main():
     print("🏦 DASHBOARD FINANCEIRO - CRIADOR DE USUÁRIOS")
     print("=" * 50)
     print("1. Criar usuário de demonstração (recomendado)")
     print("2. Criar usuário personalizado")
-    print("3. Sair")
+    print("3. Testar imports")
+    print("4. Sair")
     
     try:
-        choice = input("\nEscolha uma opção (1-3): ").strip()
+        choice = input("\nEscolha uma opção (1-4): ").strip()
         
         if choice == '1':
             create_test_user()
         elif choice == '2':
             create_admin_user()
         elif choice == '3':
+            test_imports()
+        elif choice == '4':
             print("👋 Tchau!")
         else:
             print("❌ Opção inválida!")

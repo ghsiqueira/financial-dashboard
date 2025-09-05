@@ -1,22 +1,40 @@
-from flask import Flask
-from flask_pymongo import PyMongo
+from flask import Flask, redirect, url_for, render_template
 from flask_bcrypt import Bcrypt
 from flask_jwt_extended import JWTManager
 from flask_mail import Mail
+from pymongo import MongoClient
 from config import Config
 
 # Extensões globais
-mongo = PyMongo()
 bcrypt = Bcrypt()
 jwt = JWTManager()
 mail = Mail()
+mongo_client = None
+db = None
 
 def create_app(config_class=Config):
+    global mongo_client, db
+    
     app = Flask(__name__)
     app.config.from_object(config_class)
     
-    # Inicializar extensões
-    mongo.init_app(app)
+    # Conectar ao MongoDB usando pymongo direto
+    try:
+        mongo_uri = app.config.get('MONGO_URI')
+        print(f"🔗 Conectando ao MongoDB: {mongo_uri}")
+        
+        mongo_client = MongoClient(mongo_uri)
+        db = mongo_client.get_default_database()
+        
+        # Testar conexão
+        info = mongo_client.admin.command('ping')
+        print(f"✅ MongoDB conectado com sucesso: {info}")
+        
+    except Exception as e:
+        print(f"❌ Erro ao conectar MongoDB: {e}")
+        raise
+    
+    # Inicializar outras extensões
     bcrypt.init_app(app)
     jwt.init_app(app)
     mail.init_app(app)
@@ -61,4 +79,6 @@ def create_app(config_class=Config):
     
     return app
 
-from flask import redirect, url_for, render_template
+def get_db():
+    """Retorna a instância do banco de dados"""
+    return db

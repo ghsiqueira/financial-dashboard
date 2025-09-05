@@ -1,7 +1,13 @@
 from datetime import datetime, timedelta
 from bson.objectid import ObjectId
-from app import mongo, bcrypt
+from flask import current_app
+from app import bcrypt
 from flask_jwt_extended import create_access_token
+
+def get_mongo():
+    """Helper para obter a instância do mongo dentro do contexto da app"""
+    from app import mongo
+    return mongo
 
 class User:
     def __init__(self, email, name, password_hash=None):
@@ -20,6 +26,7 @@ class User:
         return bcrypt.check_password_hash(self.password_hash, password)
     
     def save(self):
+        mongo = get_mongo()
         user_data = {
             'email': self.email,
             'name': self.name,
@@ -34,6 +41,7 @@ class User:
     
     @staticmethod
     def find_by_email(email):
+        mongo = get_mongo()
         user_data = mongo.db.users.find_one({'email': email})
         if user_data:
             user = User(user_data['email'], user_data['name'])
@@ -47,6 +55,7 @@ class User:
     
     @staticmethod
     def find_by_id(user_id):
+        mongo = get_mongo()
         user_data = mongo.db.users.find_one({'_id': ObjectId(user_id)})
         if user_data:
             user = User(user_data['email'], user_data['name'])
@@ -93,6 +102,7 @@ class Family:
         return permissions_map.get(role, [])
     
     def save(self):
+        mongo = get_mongo()
         family_data = {
             'name': self.name,
             'description': self.description,
@@ -106,6 +116,7 @@ class Family:
     
     @staticmethod
     def find_by_id(family_id):
+        mongo = get_mongo()
         family_data = mongo.db.families.find_one({'_id': ObjectId(family_id)})
         if family_data:
             family = Family(
@@ -135,6 +146,7 @@ class Transaction:
         self.attachments = []
     
     def save(self):
+        mongo = get_mongo()
         transaction_data = {
             'owner_type': self.owner_type,
             'owner_id': self.owner_id,
@@ -154,6 +166,7 @@ class Transaction:
     
     @staticmethod
     def get_user_transactions(user_id, owner_type='individual', owner_id=None, limit=50):
+        mongo = get_mongo()
         query = {'added_by': ObjectId(user_id)}
         
         if owner_type == 'family' and owner_id:
@@ -166,6 +179,8 @@ class Transaction:
     
     @staticmethod
     def get_monthly_summary(owner_id, owner_type='individual', year=None, month=None):
+        mongo = get_mongo()
+        
         if not year:
             year = datetime.now().year
         if not month:
@@ -215,6 +230,7 @@ class Budget:
         self.created_at = datetime.utcnow()
     
     def save(self):
+        mongo = get_mongo()
         budget_data = {
             'owner_id': self.owner_id,
             'owner_type': self.owner_type,
@@ -229,6 +245,8 @@ class Budget:
         return result.inserted_id
     
     def update_spent_amount(self):
+        mongo = get_mongo()
+        
         # Calcula gastos do período atual
         now = datetime.utcnow()
         if self.period == 'monthly':
@@ -260,7 +278,8 @@ class Budget:
         self.current_spent = result[0]['total'] if result else 0.0
         
         # Atualizar no banco
-        mongo.db.budgets.update_one(
-            {'_id': self._id},
-            {'$set': {'current_spent': self.current_spent}}
-        )
+        if hasattr(self, '_id'):
+            mongo.db.budgets.update_one(
+                {'_id': self._id},
+                {'$set': {'current_spent': self.current_spent}}
+            )
