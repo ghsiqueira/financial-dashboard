@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, session, redirect, url_for, jsonify
+from flask import Blueprint, flash, render_template, request, session, redirect, url_for, jsonify
 from app.auth.routes import login_required
 from app.models import User, Transaction, Budget, Family
 from app.dashboard.charts import generate_charts_data
@@ -7,37 +7,31 @@ import calendar
 
 dashboard = Blueprint('dashboard', __name__)
 
-def get_user_families(user):
-    """Função auxiliar para obter famílias do usuário"""
-    user_families = []
-    try:
-        if user and user.families:
-            for family_id in user.families:
-                family = Family.find_by_id(family_id)
-                if family:
-                    user_families.append(family)
-    except Exception as e:
-        print(f"Erro ao obter famílias: {e}")
-    return user_families
-
 @dashboard.route('/overview')
 @login_required
 def overview():
     try:
         user_id = session['user_id']
+        print(f"🔍 Dashboard overview iniciado para user_id: {user_id}")
+        
         user = User.find_by_id(user_id)
         
         if not user:
+            print(f"❌ Usuário não encontrado para ID: {user_id}")
+            session.clear()
             return redirect(url_for('auth.login'))
+        
+        print(f"✅ Usuário encontrado: {user.name}")
         
         # 🔥 SEMPRE obter famílias do usuário
         user_families = get_user_families(user)
+        print(f"📊 Famílias encontradas: {len(user_families)}")
         
         # Determinar conta ativa (individual ou família)
         active_account = request.args.get('account', 'individual')
         active_family_id = None
         
-        if active_account == 'family' and user.default_family:
+        if active_account == 'family' and hasattr(user, 'default_family') and user.default_family:
             active_family_id = user.default_family
             owner_type = 'family'
             owner_id = active_family_id
@@ -45,9 +39,12 @@ def overview():
             owner_type = 'individual'
             owner_id = user_id
         
+        print(f"🎯 Conta ativa: {active_account}, Owner: {owner_type}")
+        
         # Resumo do mês atual - COM PROTEÇÃO
         try:
             monthly_summary = Transaction.get_monthly_summary(owner_id, owner_type)
+            print(f"💰 Resumo mensal carregado: {monthly_summary}")
         except Exception as e:
             print(f"Erro ao obter resumo mensal: {e}")
             monthly_summary = {'income': 0, 'expense': 0, 'balance': 0}
@@ -57,6 +54,7 @@ def overview():
             recent_transactions = Transaction.get_user_transactions(
                 user_id, owner_type, owner_id, limit=10
             )
+            print(f"📝 Transações recentes: {len(recent_transactions)}")
         except Exception as e:
             print(f"Erro ao obter transações recentes: {e}")
             recent_transactions = []
@@ -64,6 +62,7 @@ def overview():
         # Dados para gráficos - COM PROTEÇÃO
         try:
             charts_data = generate_charts_data(owner_id, owner_type)
+            print(f"📊 Gráficos gerados com sucesso")
         except Exception as e:
             print(f"Erro ao gerar gráficos: {e}")
             charts_data = {
@@ -77,6 +76,7 @@ def overview():
         # Orçamentos - COM PROTEÇÃO
         try:
             budgets = get_user_budgets(owner_id, owner_type)
+            print(f"💰 Orçamentos carregados: {len(budgets)}")
         except Exception as e:
             print(f"Erro ao obter orçamentos: {e}")
             budgets = []
@@ -92,12 +92,34 @@ def overview():
             'active_family_id': str(active_family_id) if active_family_id else None
         }
         
+        print(f"✅ Contexto montado com sucesso. Renderizando dashboard...")
         return render_template('dashboard/overview.html', **context)
         
     except Exception as e:
-        print(f"Erro geral no dashboard: {e}")
+        print(f"❌ Erro geral no dashboard: {e}")
+        import traceback
+        traceback.print_exc()
         # Em caso de erro crítico, redirecionar para login
+        session.clear()
+        flash('Erro no sistema. Faça login novamente.', 'error')
         return redirect(url_for('auth.login'))
+
+def get_user_families(user):
+    """Função auxiliar para obter famílias do usuário"""
+    user_families = []
+    try:
+        if user and hasattr(user, 'families') and user.families:
+            for family_id in user.families:
+                try:
+                    family = Family.find_by_id(family_id)
+                    if family:
+                        user_families.append(family)
+                except Exception as e:
+                    print(f"Erro ao carregar família {family_id}: {e}")
+                    continue
+    except Exception as e:
+        print(f"Erro ao obter famílias: {e}")
+    return user_families
 
 @dashboard.route('/transactions')
 @login_required

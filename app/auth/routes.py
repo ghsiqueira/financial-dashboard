@@ -93,6 +93,11 @@ def login():
             session['user_id'] = str(user._id)
             session['user_name'] = user.name
             session['user_email'] = user.email
+            session.permanent = True  # Fazer a sessão permanente
+            
+            # Debug logs
+            print(f"✅ Login bem-sucedido para {user.name}")
+            print(f"📝 Session ID: {session.get('user_id')}")
             
             # Gerar token JWT
             token = user.generate_token()

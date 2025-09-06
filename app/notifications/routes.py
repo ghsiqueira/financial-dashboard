@@ -1,10 +1,17 @@
-from flask import Blueprint, request, jsonify, session
+from flask import Blueprint, request, jsonify, session, render_template, redirect, url_for
 from app.auth.routes import login_required
 from app.models import User
 from bson.objectid import ObjectId
 from datetime import datetime, timedelta
 
 notifications = Blueprint('notifications', __name__)
+
+@notifications.route('/center')
+@login_required
+def center():
+    """Central de notificações - página principal"""
+    user = User.find_by_id(session['user_id'])
+    return render_template('notifications/center.html', user=user)
 
 @notifications.route('/api/user/<user_id>')
 @login_required
@@ -167,7 +174,7 @@ def get_budget_alerts(user_id, user):
             alerts.append(alert)
     
     # Verificar orçamentos familiares
-    if user.default_family:
+    if hasattr(user, 'default_family') and user.default_family:
         family_budgets = db.budgets.find({
             'owner_id': user.default_family,
             'owner_type': 'family',
