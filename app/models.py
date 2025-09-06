@@ -4,10 +4,10 @@ from flask import current_app
 from app import bcrypt
 from flask_jwt_extended import create_access_token
 
-def get_mongo():
+def get_db():
     """Helper para obter a instância do mongo dentro do contexto da app"""
-    from app import mongo
-    return mongo
+    from app import get_db
+    return get_db()
 
 class User:
     def __init__(self, email, name, password_hash=None):
@@ -26,7 +26,7 @@ class User:
         return bcrypt.check_password_hash(self.password_hash, password)
     
     def save(self):
-        mongo = get_mongo()
+        db = get_db()
         user_data = {
             'email': self.email,
             'name': self.name,
@@ -36,13 +36,14 @@ class User:
             'individual_account': self.individual_account,
             'created_at': self.created_at
         }
-        result = mongo.db.users.insert_one(user_data)
+        result = db.users.insert_one(user_data)
+        self._id = result.inserted_id
         return result.inserted_id
     
     @staticmethod
     def find_by_email(email):
-        mongo = get_mongo()
-        user_data = mongo.db.users.find_one({'email': email})
+        db = get_db()
+        user_data = db.users.find_one({'email': email})
         if user_data:
             user = User(user_data['email'], user_data['name'])
             user.password_hash = user_data['password_hash']
@@ -50,13 +51,14 @@ class User:
             user.default_family = user_data.get('default_family')
             user.individual_account = user_data.get('individual_account', True)
             user._id = user_data['_id']
+            user.created_at = user_data.get('created_at', datetime.utcnow())
             return user
         return None
     
     @staticmethod
     def find_by_id(user_id):
-        mongo = get_mongo()
-        user_data = mongo.db.users.find_one({'_id': ObjectId(user_id)})
+        db = get_db()
+        user_data = db.users.find_one({'_id': ObjectId(user_id)})
         if user_data:
             user = User(user_data['email'], user_data['name'])
             user.password_hash = user_data['password_hash']
@@ -64,6 +66,7 @@ class User:
             user.default_family = user_data.get('default_family')
             user.individual_account = user_data.get('individual_account', True)
             user._id = user_data['_id']
+            user.created_at = user_data.get('created_at', datetime.utcnow())
             return user
         return None
     
@@ -102,7 +105,7 @@ class Family:
         return permissions_map.get(role, [])
     
     def save(self):
-        mongo = get_mongo()
+        db = get_db()
         family_data = {
             'name': self.name,
             'description': self.description,
@@ -111,13 +114,14 @@ class Family:
             'settings': self.settings,
             'created_at': self.created_at
         }
-        result = mongo.db.families.insert_one(family_data)
+        result = db.families.insert_one(family_data)
+        self._id = result.inserted_id
         return result.inserted_id
     
     @staticmethod
     def find_by_id(family_id):
-        mongo = get_mongo()
-        family_data = mongo.db.families.find_one({'_id': ObjectId(family_id)})
+        db = get_db()
+        family_data = db.families.find_one({'_id': ObjectId(family_id)})
         if family_data:
             family = Family(
                 family_data['name'],
@@ -127,6 +131,7 @@ class Family:
             family.members = family_data.get('members', [])
             family.settings = family_data.get('settings', {})
             family._id = family_data['_id']
+            family.created_at = family_data.get('created_at', datetime.utcnow())
             return family
         return None
 
@@ -146,7 +151,7 @@ class Transaction:
         self.attachments = []
     
     def save(self):
-        mongo = get_mongo()
+        db = get_db()
         transaction_data = {
             'owner_type': self.owner_type,
             'owner_id': self.owner_id,
@@ -161,12 +166,13 @@ class Transaction:
             'recurring': self.recurring,
             'attachments': self.attachments
         }
-        result = mongo.db.transactions.insert_one(transaction_data)
+        result = db.transactions.insert_one(transaction_data)
+        self._id = result.inserted_id
         return result.inserted_id
     
     @staticmethod
     def get_user_transactions(user_id, owner_type='individual', owner_id=None, limit=50):
-        mongo = get_mongo()
+        db = get_db()
         query = {'added_by': ObjectId(user_id)}
         
         if owner_type == 'family' and owner_id:
@@ -174,12 +180,12 @@ class Transaction:
         elif owner_type == 'individual':
             query['owner_type'] = 'individual'
         
-        transactions = mongo.db.transactions.find(query).sort('date', -1).limit(limit)
+        transactions = db.transactions.find(query).sort('date', -1).limit(limit)
         return list(transactions)
     
     @staticmethod
     def get_monthly_summary(owner_id, owner_type='individual', year=None, month=None):
-        mongo = get_mongo()
+        db = get_db()
         
         if not year:
             year = datetime.now().year
@@ -209,7 +215,7 @@ class Transaction:
             }
         ]
         
-        result = list(mongo.db.transactions.aggregate(pipeline))
+        result = list(db.transactions.aggregate(pipeline))
         summary = {'income': 0, 'expense': 0, 'balance': 0}
         
         for item in result:
@@ -230,7 +236,7 @@ class Budget:
         self.created_at = datetime.utcnow()
     
     def save(self):
-        mongo = get_mongo()
+        db = get_db()
         budget_data = {
             'owner_id': self.owner_id,
             'owner_type': self.owner_type,
@@ -241,11 +247,12 @@ class Budget:
             'alerts_enabled': self.alerts_enabled,
             'created_at': self.created_at
         }
-        result = mongo.db.budgets.insert_one(budget_data)
+        result = db.budgets.insert_one(budget_data)
+        self._id = result.inserted_id
         return result.inserted_id
     
     def update_spent_amount(self):
-        mongo = get_mongo()
+        db = get_db()
         
         # Calcula gastos do período atual
         now = datetime.utcnow()
@@ -274,12 +281,12 @@ class Budget:
             }
         ]
         
-        result = list(mongo.db.transactions.aggregate(pipeline))
+        result = list(db.transactions.aggregate(pipeline))
         self.current_spent = result[0]['total'] if result else 0.0
         
         # Atualizar no banco
         if hasattr(self, '_id'):
-            mongo.db.budgets.update_one(
+            db.budgets.update_one(
                 {'_id': self._id},
                 {'$set': {'current_spent': self.current_spent}}
             )

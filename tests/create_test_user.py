@@ -1,9 +1,3 @@
-#!/usr/bin/env python3
-"""
-Script para criar usuário de teste no Dashboard Financeiro
-Execute: python tests/create_test_user.py (da raiz do projeto)
-"""
-
 import sys
 import os
 from datetime import datetime, timedelta
@@ -26,14 +20,20 @@ def create_test_user():
         print(f"🐍 Python path: {sys.path[0]}")
         
         # Agora importar os módulos
-        from app import create_app, mongo
+        from app import create_app, get_db, init_mongo
         from app.models import User, Transaction, Budget, Family
         
         # Criar app
         app = create_app()
         
         with app.app_context():
+            # Inicializar mongo wrapper
+            init_mongo()
+            
             print("🚀 Criando usuário de teste...")
+            
+            # Obter instância do banco
+            db = get_db()
             
             # Verificar se usuário já existe
             existing_user = User.find_by_email('demo@financedash.com')
@@ -45,10 +45,10 @@ def create_test_user():
                     return
                 
                 # Remover usuário existente
-                mongo.db.users.delete_one({'email': 'demo@financedash.com'})
+                db.users.delete_one({'email': 'demo@financedash.com'})
                 if hasattr(existing_user, '_id'):
-                    mongo.db.transactions.delete_many({'added_by': existing_user._id})
-                    mongo.db.budgets.delete_many({'owner_id': existing_user._id})
+                    db.transactions.delete_many({'added_by': existing_user._id})
+                    db.budgets.delete_many({'owner_id': existing_user._id})
                 print("🗑️  Dados anteriores removidos.")
             
             # Criar usuário demo
@@ -138,7 +138,7 @@ def create_test_user():
             family_id = family.save()
             
             # Adicionar família ao usuário
-            mongo.db.users.update_one(
+            db.users.update_one(
                 {'_id': user_id},
                 {
                     '$push': {'families': family_id},
@@ -196,12 +196,15 @@ def create_test_user():
 def create_admin_user():
     """Criar usuário administrador"""
     try:
-        from app import create_app
+        from app import create_app, get_db, init_mongo
         from app.models import User
         
         app = create_app()
         
         with app.app_context():
+            # Inicializar mongo wrapper
+            init_mongo()
+            
             print("👑 Criando usuário administrador...")
             
             email = input("Email do admin: ").strip()
@@ -257,11 +260,70 @@ def test_imports():
         from app.models import User
         print("   ✅ Models OK")
         
+        # Testar contexto do app
+        print("   • Testando app context...")
+        with app.app_context():
+            from app import get_db, init_mongo
+            init_mongo()
+            db = get_db()
+            print(f"   ✅ Database conectado: {db.name}")
+        
         print("\n✅ Todos os imports funcionaram!")
         return True
         
     except Exception as e:
         print(f"\n❌ Erro no teste de imports: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+def test_mongodb_connection():
+    """Testar conexão específica com MongoDB"""
+    try:
+        print("🗄️  Testando conexão MongoDB...")
+        
+        from pymongo import MongoClient
+        import os
+        from dotenv import load_dotenv
+        
+        load_dotenv()
+        
+        mongo_uri = os.environ.get('MONGO_URI')
+        print(f"   • URI: {mongo_uri}")
+        
+        if not mongo_uri:
+            print("   ❌ MONGO_URI não encontrada no .env")
+            return False
+        
+        client = MongoClient(mongo_uri)
+        
+        # Testar ping
+        print("   • Testando ping...")
+        info = client.admin.command('ping')
+        print(f"   ✅ Ping OK: {info}")
+        
+        # Testar acesso ao banco
+        print("   • Testando banco 'financedash'...")
+        db = client['financedash']
+        collections = db.list_collection_names()
+        print(f"   ✅ Banco OK. Collections: {collections}")
+        
+        # Testar inserção
+        print("   • Testando inserção...")
+        test_collection = db['test']
+        result = test_collection.insert_one({'test': True, 'timestamp': datetime.now()})
+        print(f"   ✅ Inserção OK: {result.inserted_id}")
+        
+        # Limpar teste
+        test_collection.delete_one({'_id': result.inserted_id})
+        print("   ✅ Teste de limpeza OK")
+        
+        client.close()
+        print("\n✅ Conexão MongoDB funcionando perfeitamente!")
+        return True
+        
+    except Exception as e:
+        print(f"\n❌ Erro na conexão MongoDB: {e}")
         import traceback
         traceback.print_exc()
         return False
@@ -272,10 +334,11 @@ def main():
     print("1. Criar usuário de demonstração (recomendado)")
     print("2. Criar usuário personalizado")
     print("3. Testar imports")
-    print("4. Sair")
+    print("4. Testar conexão MongoDB")
+    print("5. Sair")
     
     try:
-        choice = input("\nEscolha uma opção (1-4): ").strip()
+        choice = input("\nEscolha uma opção (1-5): ").strip()
         
         if choice == '1':
             create_test_user()
@@ -284,6 +347,8 @@ def main():
         elif choice == '3':
             test_imports()
         elif choice == '4':
+            test_mongodb_connection()
+        elif choice == '5':
             print("👋 Tchau!")
         else:
             print("❌ Opção inválida!")

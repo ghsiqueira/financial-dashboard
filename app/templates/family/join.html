@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block title %}Entrar em Família - {{ super() }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">
+                    <i class="bi bi-box-arrow-in-right"></i> Entrar em Família
+                </h4>
+            </div>
+            <div class="card-body">
+                <p class="text-muted mb-4">
+                    Digite o código de convite que você recebeu para entrar em uma família.
+                </p>
+                
+                <form method="POST" id="joinFamilyForm">
+                    <div class="mb-3">
+                        <label for="invite_code" class="form-label">Código de Convite *</label>
+                        <input type="text" class="form-control text-uppercase" id="invite_code" name="invite_code" 
+                               placeholder="Ex: ABC12345" required maxlength="8" style="letter-spacing: 2px; font-family: monospace;">
+                        <div class="form-text">Código de 8 caracteres fornecido pelo administrador da família</div>
+                    </div>
+                    
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        <strong>Atenção:</strong> Você só pode entrar se tiver recebido um convite específico para seu email.
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('dashboard.overview') }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left"></i> Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-box-arrow-in-right"></i> Entrar na Família
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <div class="card mt-4">
+            <div class="card-body">
+                <h6 class="card-title">
+                    <i class="bi bi-question-circle"></i> Não tem um convite?
+                </h6>
+                <p class="card-text text-muted">
+                    Peça para um administrador de família te enviar um convite.
+                    Você também pode <a href="{{ url_for('family.create_family') }}">criar sua própria família</a>.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Auto-maiúscula e formatação do código
+document.getElementById('invite_code').addEventListener('input', function(e) {
+    this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+});
+
+document.getElementById('joinFamilyForm').addEventListener('submit', function(e) {
+    const code = document.getElementById('invite_code').value.trim();
+    
+    if (code.length !== 8) {
+        e.preventDefault();
+        alert('Código de convite deve ter exatamente 8 caracteres');
+        return;
+    }
+    
+    // Mostrar loading
+    const submitBtn = this.querySelector('button[type="submit"]');
+    submitBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Entrando...';
+    submitBtn.disabled = true;
+});
+</script>
+{% endblock %}

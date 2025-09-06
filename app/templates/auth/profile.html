@@ -1,0 +1,585 @@
+{% extends "base.html" %}
+
+{% block title %}Meu Perfil - {{ super() }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-4">
+        <!-- Sidebar do Perfil -->
+        <div class="card">
+            <div class="card-body text-center">
+                <div class="profile-avatar mb-3">
+                    <div class="avatar-circle bg-primary text-white">
+                        {{ user.name[0].upper() }}
+                    </div>
+                </div>
+                <h5 class="card-title">{{ user.name }}</h5>
+                <p class="text-muted">{{ user.email }}</p>
+                <small class="text-muted">
+                    <i class="bi bi-calendar"></i> 
+                    Membro desde {{ format_date(user.created_at) }}
+                </small>
+            </div>
+        </div>
+
+        <!-- Estatísticas Rápidas -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-graph-up"></i> Suas Estatísticas</h6>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-6">
+                        <div class="stat-item">
+                            <h4 class="text-primary" id="totalTransactions">-</h4>
+                            <small class="text-muted">Transações</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="stat-item">
+                            <h4 class="text-success" id="familyCount">{{ user.families|length if user.families else 0 }}</h4>
+                            <small class="text-muted">Famílias</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Menu de Navegação -->
+        <div class="list-group mt-3">
+            <a href="#personal-info" class="list-group-item list-group-item-action active" data-tab="personal-info">
+                <i class="bi bi-person"></i> Informações Pessoais
+            </a>
+            <a href="#security" class="list-group-item list-group-item-action" data-tab="security">
+                <i class="bi bi-shield-lock"></i> Segurança
+            </a>
+            <a href="#notifications" class="list-group-item list-group-item-action" data-tab="notifications">
+                <i class="bi bi-bell"></i> Notificações
+            </a>
+            <a href="#preferences" class="list-group-item list-group-item-action" data-tab="preferences">
+                <i class="bi bi-gear"></i> Preferências
+            </a>
+            <a href="#danger-zone" class="list-group-item list-group-item-action text-danger" data-tab="danger-zone">
+                <i class="bi bi-exclamation-triangle"></i> Zona de Perigo
+            </a>
+        </div>
+    </div>
+
+    <div class="col-md-8">
+        <!-- Informações Pessoais -->
+        <div class="tab-content active" id="personal-info">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-person"></i> Informações Pessoais</h5>
+                </div>
+                <div class="card-body">
+                    <form id="personalInfoForm">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="name" class="form-label">Nome Completo</label>
+                                    <input type="text" class="form-control" id="name" name="name" 
+                                           value="{{ user.name }}" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="email" class="form-label">Email</label>
+                                    <input type="email" class="form-control" id="email" name="email" 
+                                           value="{{ user.email }}" required>
+                                    <div class="form-text">Alterar email requer confirmação</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="phone" class="form-label">Telefone</label>
+                                    <input type="tel" class="form-control" id="phone" name="phone" 
+                                           value="{{ user.phone or '' }}" placeholder="(11) 99999-9999">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="timezone" class="form-label">Fuso Horário</label>
+                                    <select class="form-select" id="timezone" name="timezone">
+                                        <option value="America/Sao_Paulo" selected>Brasília (GMT-3)</option>
+                                        <option value="America/Manaus">Manaus (GMT-4)</option>
+                                        <option value="America/Rio_Branco">Rio Branco (GMT-5)</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="bio" class="form-label">Sobre Você</label>
+                            <textarea class="form-control" id="bio" name="bio" rows="3" 
+                                      placeholder="Conte um pouco sobre você...">{{ user.bio or '' }}</textarea>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle"></i> Salvar Alterações
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Segurança -->
+        <div class="tab-content" id="security" style="display: none;">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-shield-lock"></i> Segurança</h5>
+                </div>
+                <div class="card-body">
+                    <!-- Alterar Senha -->
+                    <div class="mb-4">
+                        <h6>Alterar Senha</h6>
+                        <form id="changePasswordForm">
+                            <div class="mb-3">
+                                <label for="currentPassword" class="form-label">Senha Atual</label>
+                                <input type="password" class="form-control" id="currentPassword" 
+                                       name="current_password" required>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="newPassword" class="form-label">Nova Senha</label>
+                                        <input type="password" class="form-control" id="newPassword" 
+                                               name="new_password" required minlength="6">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="confirmPassword" class="form-label">Confirmar Senha</label>
+                                        <input type="password" class="form-control" id="confirmPassword" 
+                                               name="confirm_password" required>
+                                    </div>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-warning">
+                                <i class="bi bi-key"></i> Alterar Senha
+                            </button>
+                        </form>
+                    </div>
+
+                    <hr>
+
+                    <!-- Sessões Ativas -->
+                    <div class="mb-4">
+                        <h6>Sessões Ativas</h6>
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle"></i>
+                            Você está conectado neste dispositivo. Para ver outras sessões ativas, 
+                            essa funcionalidade será implementada em uma próxima versão.
+                        </div>
+                    </div>
+
+                    <!-- Download de Dados -->
+                    <div>
+                        <h6>Seus Dados</h6>
+                        <p class="text-muted">Baixe uma cópia dos seus dados.</p>
+                        <button class="btn btn-outline-primary" onclick="downloadUserData()">
+                            <i class="bi bi-download"></i> Baixar Meus Dados
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notificações -->
+        <div class="tab-content" id="notifications" style="display: none;">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-bell"></i> Configurações de Notificação</h5>
+                </div>
+                <div class="card-body">
+                    <form id="notificationSettingsForm">
+                        <div class="mb-4">
+                            <h6>Tipos de Notificação</h6>
+                            
+                            <div class="form-check form-switch mb-2">
+                                <input class="form-check-input" type="checkbox" id="budgetAlerts" 
+                                       name="budget_alerts" checked>
+                                <label class="form-check-label" for="budgetAlerts">
+                                    <strong>Alertas de Orçamento</strong>
+                                    <div class="text-muted small">Notificar quando atingir limite do orçamento</div>
+                                </label>
+                            </div>
+
+                            <div class="form-check form-switch mb-2">
+                                <input class="form-check-input" type="checkbox" id="familyInvites" 
+                                       name="family_invites" checked>
+                                <label class="form-check-label" for="familyInvites">
+                                    <strong>Convites de Família</strong>
+                                    <div class="text-muted small">Notificar sobre novos convites de família</div>
+                                </label>
+                            </div>
+
+                            <div class="form-check form-switch mb-2">
+                                <input class="form-check-input" type="checkbox" id="financialInsights" 
+                                       name="financial_insights" checked>
+                                <label class="form-check-label" for="financialInsights">
+                                    <strong>Insights Financeiros</strong>
+                                    <div class="text-muted small">Receber dicas e análises personalizadas</div>
+                                </label>
+                            </div>
+
+                            <div class="form-check form-switch mb-2">
+                                <input class="form-check-input" type="checkbox" id="transactionReminders" 
+                                       name="transaction_reminders" checked>
+                                <label class="form-check-label" for="transactionReminders">
+                                    <strong>Lembretes de Transação</strong>
+                                    <div class="text-muted small">Lembrar de registrar transações recorrentes</div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <hr>
+
+                        <div class="mb-4">
+                            <h6>Canais de Notificação</h6>
+                            
+                            <div class="form-check form-switch mb-2">
+                                <input class="form-check-input" type="checkbox" id="emailNotifications" 
+                                       name="email_notifications">
+                                <label class="form-check-label" for="emailNotifications">
+                                    <strong>Email</strong>
+                                    <div class="text-muted small">Receber notificações por email</div>
+                                </label>
+                            </div>
+
+                            <div class="form-check form-switch mb-2">
+                                <input class="form-check-input" type="checkbox" id="pushNotifications" 
+                                       name="push_notifications" checked>
+                                <label class="form-check-label" for="pushNotifications">
+                                    <strong>Notificações Push</strong>
+                                    <div class="text-muted small">Notificações no navegador/app</div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle"></i> Salvar Preferências
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Preferências -->
+        <div class="tab-content" id="preferences" style="display: none;">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-gear"></i> Preferências</h5>
+                </div>
+                <div class="card-body">
+                    <form id="preferencesForm">
+                        <div class="mb-4">
+                            <h6>Aparência</h6>
+                            <div class="mb-3">
+                                <label for="theme" class="form-label">Tema</label>
+                                <select class="form-select" id="theme" name="theme">
+                                    <option value="light" selected>Claro</option>
+                                    <option value="dark">Escuro</option>
+                                    <option value="auto">Automático</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <h6>Formato de Dados</h6>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="currency" class="form-label">Moeda</label>
+                                        <select class="form-select" id="currency" name="currency">
+                                            <option value="BRL" selected>Real (R$)</option>
+                                            <option value="USD">Dólar ($)</option>
+                                            <option value="EUR">Euro (€)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="dateFormat" class="form-label">Formato de Data</label>
+                                        <select class="form-select" id="dateFormat" name="date_format">
+                                            <option value="dd/mm/yyyy" selected>DD/MM/AAAA</option>
+                                            <option value="mm/dd/yyyy">MM/DD/AAAA</option>
+                                            <option value="yyyy-mm-dd">AAAA-MM-DD</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <h6>Dashboard</h6>
+                            <div class="form-check form-switch mb-2">
+                                <input class="form-check-input" type="checkbox" id="showWelcome" 
+                                       name="show_welcome" checked>
+                                <label class="form-check-label" for="showWelcome">
+                                    Mostrar mensagem de boas-vindas
+                                </label>
+                            </div>
+                            <div class="form-check form-switch mb-2">
+                                <input class="form-check-input" type="checkbox" id="autoRefresh" 
+                                       name="auto_refresh" checked>
+                                <label class="form-check-label" for="autoRefresh">
+                                    Atualizar dados automaticamente
+                                </label>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle"></i> Salvar Preferências
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Zona de Perigo -->
+        <div class="tab-content" id="danger-zone" style="display: none;">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0"><i class="bi bi-exclamation-triangle"></i> Zona de Perigo</h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        <strong>Atenção!</strong> As ações abaixo são irreversíveis.
+                    </div>
+
+                    <div class="mb-4">
+                        <h6>Apagar Todos os Dados</h6>
+                        <p class="text-muted">
+                            Remove todas as suas transações, orçamentos e dados financeiros.
+                            Sua conta permanecerá ativa.
+                        </p>
+                        <button class="btn btn-outline-warning" onclick="confirmDeleteData()">
+                            <i class="bi bi-trash"></i> Apagar Todos os Dados
+                        </button>
+                    </div>
+
+                    <hr>
+
+                    <div>
+                        <h6>Excluir Conta</h6>
+                        <p class="text-muted">
+                            Exclui permanentemente sua conta e todos os dados associados.
+                            Esta ação não pode ser desfeita.
+                        </p>
+                        <button class="btn btn-danger" onclick="confirmDeleteAccount()">
+                            <i class="bi bi-person-x"></i> Excluir Conta Permanentemente
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.profile-avatar {
+    display: flex;
+    justify-content: center;
+}
+
+.avatar-circle {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    font-weight: bold;
+}
+
+.tab-content {
+    transition: all 0.3s ease;
+}
+
+.list-group-item.active {
+    background-color: var(--bs-primary);
+    border-color: var(--bs-primary);
+}
+
+.stat-item h4 {
+    margin-bottom: 0;
+}
+</style>
+
+<script>
+// Sistema de Tabs
+document.querySelectorAll('[data-tab]').forEach(link => {
+    link.addEventListener('click', function(e) {
+        e.preventDefault();
+        
+        // Remover active de todos os links
+        document.querySelectorAll('[data-tab]').forEach(l => l.classList.remove('active'));
+        
+        // Ocultar todos os conteúdos
+        document.querySelectorAll('.tab-content').forEach(content => {
+            content.style.display = 'none';
+        });
+        
+        // Ativar link clicado
+        this.classList.add('active');
+        
+        // Mostrar conteúdo correspondente
+        const tabId = this.getAttribute('data-tab');
+        document.getElementById(tabId).style.display = 'block';
+    });
+});
+
+// Carregar estatísticas do usuário
+document.addEventListener('DOMContentLoaded', function() {
+    loadUserStats();
+});
+
+async function loadUserStats() {
+    try {
+        // Carregar estatísticas básicas do usuário
+        const response = await fetch('/dashboard/api/summary');
+        const data = await response.json();
+        
+        // Atualizar contador de transações (placeholder)
+        document.getElementById('totalTransactions').textContent = '150+';
+    } catch (error) {
+        console.error('Erro ao carregar estatísticas:', error);
+    }
+}
+
+// Formulários
+document.getElementById('personalInfoForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const data = Object.fromEntries(formData.entries());
+    
+    try {
+        const response = await fetch('/auth/profile/update', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            FinanceDash.Notifications.success('Perfil atualizado com sucesso!');
+        } else {
+            FinanceDash.Notifications.error(result.error || 'Erro ao atualizar perfil');
+        }
+    } catch (error) {
+        FinanceDash.Notifications.error('Erro ao atualizar perfil');
+    }
+});
+
+document.getElementById('changePasswordForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const newPassword = document.getElementById('newPassword').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
+    
+    if (newPassword !== confirmPassword) {
+        FinanceDash.Notifications.error('Senhas não conferem');
+        return;
+    }
+    
+    const formData = new FormData(this);
+    const data = Object.fromEntries(formData.entries());
+    
+    try {
+        const response = await fetch('/auth/change_password', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            FinanceDash.Notifications.success('Senha alterada com sucesso!');
+            this.reset();
+        } else {
+            FinanceDash.Notifications.error(result.error || 'Erro ao alterar senha');
+        }
+    } catch (error) {
+        FinanceDash.Notifications.error('Erro ao alterar senha');
+    }
+});
+
+// Funções da zona de perigo
+function confirmDeleteData() {
+    if (confirm('Tem certeza que deseja apagar TODOS os seus dados financeiros? Esta ação não pode ser desfeita.')) {
+        if (confirm('ÚLTIMA CONFIRMAÇÃO: Todos os seus dados serão perdidos permanentemente. Continuar?')) {
+            deleteAllData();
+        }
+    }
+}
+
+function confirmDeleteAccount() {
+    if (confirm('Tem certeza que deseja EXCLUIR SUA CONTA permanentemente? Todos os dados serão perdidos.')) {
+        if (confirm('ÚLTIMA CONFIRMAÇÃO: Sua conta será excluída para sempre. Continuar?')) {
+            deleteAccount();
+        }
+    }
+}
+
+async function deleteAllData() {
+    try {
+        const response = await fetch('/auth/delete_data', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            FinanceDash.Notifications.success('Todos os dados foram apagados');
+            window.location.href = '/dashboard/overview';
+        } else {
+            FinanceDash.Notifications.error('Erro ao apagar dados');
+        }
+    } catch (error) {
+        FinanceDash.Notifications.error('Erro ao apagar dados');
+    }
+}
+
+async function deleteAccount() {
+    try {
+        const response = await fetch('/auth/delete_account', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('Conta excluída com sucesso. Você será redirecionado.');
+            window.location.href = '/';
+        } else {
+            FinanceDash.Notifications.error('Erro ao excluir conta');
+        }
+    } catch (error) {
+        FinanceDash.Notifications.error('Erro ao excluir conta');
+    }
+}
+
+function downloadUserData() {
+    window.location.href = '/reports/export/json?full_export=true';
+}
+</script>
+{% endblock %}

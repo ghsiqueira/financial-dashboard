@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+
+{% block title %}Nova Transação - {{ super() }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">
+                    <i class="bi bi-plus-circle"></i> Nova Transação
+                </h4>
+            </div>
+            <div class="card-body">
+                <form method="POST" id="addTransactionForm">
+                    <!-- Tipo de Transação -->
+                    <div class="mb-3">
+                        <label class="form-label">Tipo de Transação *</label>
+                        <div class="btn-group w-100" role="group">
+                            <input type="radio" class="btn-check" name="type" id="income" value="income" 
+                                   {% if request.args.get('type') != 'expense' %}checked{% endif %}>
+                            <label class="btn btn-outline-success" for="income">
+                                <i class="bi bi-arrow-up-circle"></i> Receita
+                            </label>
+                            
+                            <input type="radio" class="btn-check" name="type" id="expense" value="expense"
+                                   {% if request.args.get('type') == 'expense' %}checked{% endif %}>
+                            <label class="btn btn-outline-danger" for="expense">
+                                <i class="bi bi-arrow-down-circle"></i> Despesa
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- Valor -->
+                    <div class="mb-3">
+                        <label for="amount" class="form-label">Valor *</label>
+                        <div class="input-group">
+                            <span class="input-group-text">R$</span>
+                            <input type="number" class="form-control" id="amount" name="amount" 
+                                   step="0.01" min="0.01" placeholder="0,00" required>
+                        </div>
+                    </div>
+                    
+                    <!-- Categoria -->
+                    <div class="mb-3">
+                        <label for="category" class="form-label">Categoria *</label>
+                        <select class="form-select" id="category" name="category" required>
+                            <option value="">Selecione uma categoria</option>
+                            {% for cat in categories %}
+                            <option value="{{ cat }}">{{ cat }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <!-- Descrição -->
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Descrição</label>
+                        <input type="text" class="form-control" id="description" name="description" 
+                               placeholder="Descrição da transação">
+                    </div>
+                    
+                    <!-- Data -->
+                    <div class="mb-3">
+                        <label for="date" class="form-label">Data</label>
+                        <input type="date" class="form-control" id="date" name="date">
+                    </div>
+                    
+                    <!-- Método de Pagamento -->
+                    <div class="mb-3">
+                        <label for="payment_method" class="form-label">Método de Pagamento</label>
+                        <select class="form-select" id="payment_method" name="payment_method">
+                            <option value="">Selecione (opcional)</option>
+                            <option value="dinheiro">Dinheiro</option>
+                            <option value="cartao_debito">Cartão de Débito</option>
+                            <option value="cartao_credito">Cartão de Crédito</option>
+                            <option value="pix">PIX</option>
+                            <option value="transferencia">Transferência</option>
+                            <option value="boleto">Boleto</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Conta -->
+                    {% if user.families %}
+                    <div class="mb-3">
+                        <label for="account_type" class="form-label">Conta</label>
+                        <select class="form-select" id="account_type" name="account_type">
+                            <option value="individual">Conta Individual</option>
+                            <option value="family">Conta Familiar</option>
+                        </select>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('dashboard.overview') }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left"></i> Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle"></i> Salvar Transação
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Definir data atual
+document.getElementById('date').value = new Date().toISOString().split('T')[0];
+
+// Formatação do valor
+document.getElementById('amount').addEventListener('input', function(e) {
+    let value = e.target.value;
+    // Permitir apenas números e ponto decimal
+    e.target.value = value.replace(/[^0-9.]/g, '');
+});
+
+// Submissão do formulário
+document.getElementById('addTransactionForm').addEventListener('submit', function(e) {
+    const amount = parseFloat(document.getElementById('amount').value);
+    const category = document.getElementById('category').value;
+    
+    if (!amount || amount <= 0) {
+        e.preventDefault();
+        alert('Valor deve ser maior que zero');
+        return;
+    }
+    
+    if (!category) {
+        e.preventDefault();
+        alert('Categoria é obrigatória');
+        return;
+    }
+    
+    // Mostrar loading
+    const submitBtn = this.querySelector('button[type="submit"]');
+    submitBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Salvando...';
+    submitBtn.disabled = true;
+});
+</script>
+{% endblock %}

@@ -1,0 +1,313 @@
+{% extends "base.html" %}
+
+{% block title %}{{ family.name }} - Gerenciar Família - {{ super() }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2><i class="bi bi-people"></i> {{ family.name }}</h2>
+        <p class="text-muted mb-0">{{ family.description or 'Sem descrição' }}</p>
+    </div>
+    <div class="btn-group">
+        {% if is_admin %}
+        <a href="{{ url_for('family.invite', family_id=family._id) }}" class="btn btn-primary">
+            <i class="bi bi-person-plus"></i> Convidar Membro
+        </a>
+        <button type="button" class="btn btn-outline-secondary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown">
+            <span class="visually-hidden">Toggle Dropdown</span>
+        </button>
+        <ul class="dropdown-menu">
+            <li><a class="dropdown-item" href="{{ url_for('family.family_settings', family_id=family._id) }}">
+                <i class="bi bi-gear"></i> Configurações
+            </a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item text-danger" href="#" onclick="leaveFamily()">
+                <i class="bi bi-box-arrow-left"></i> Sair da Família
+            </a></li>
+        </ul>
+        {% else %}
+        <button class="btn btn-outline-danger" onclick="leaveFamily()">
+            <i class="bi bi-box-arrow-left"></i> Sair da Família
+        </button>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Estatísticas da Família -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body text-center">
+                <i class="bi bi-people display-4 mb-2"></i>
+                <h3>{{ members|length }}</h3>
+                <p class="mb-0">Membros</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-info text-white">
+            <div class="card-body text-center">
+                <i class="bi bi-list-ul display-4 mb-2"></i>
+                <h3 id="transactionCount">-</h3>
+                <p class="mb-0">Transações</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body text-center">
+                <i class="bi bi-arrow-up-circle display-4 mb-2"></i>
+                <h3 id="totalIncome">-</h3>
+                <p class="mb-0">Receitas do Mês</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-danger text-white">
+            <div class="card-body text-center">
+                <i class="bi bi-arrow-down-circle display-4 mb-2"></i>
+                <h3 id="totalExpense">-</h3>
+                <p class="mb-0">Despesas do Mês</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Membros da Família -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="bi bi-people"></i> Membros da Família</h5>
+        {% if is_admin %}
+        <a href="{{ url_for('family.invite', family_id=family._id) }}" class="btn btn-sm btn-outline-primary">
+            <i class="bi bi-person-plus"></i> Convidar
+        </a>
+        {% endif %}
+    </div>
+    <div class="card-body">
+        <div class="row">
+            {% for member_data in members %}
+            <div class="col-md-6 col-lg-4 mb-3">
+                <div class="member-card" data-member-id="{{ member_data.user._id }}">
+                    <div class="d-flex align-items-center">
+                        <div class="member-avatar me-3">
+                            {{ member_data.user.name[0].upper() }}
+                        </div>
+                        <div class="flex-grow-1">
+                            <h6 class="mb-1">{{ member_data.user.name }}</h6>
+                            <small class="text-muted">{{ member_data.user.email }}</small>
+                            <div class="mt-1">
+                                <span class="member-role {{ member_data.role }}">{{ member_data.role }}</span>
+                            </div>
+                        </div>
+                        {% if is_admin and member_data.user._id != user._id %}
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="dropdown">
+                                <i class="bi bi-three-dots-vertical"></i>
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li><h6 class="dropdown-header">Alterar Papel</h6></li>
+                                <li><a class="dropdown-item" href="#" 
+                                       onclick="changeRole('{{ member_data.user._id }}', 'admin')">
+                                    <i class="bi bi-star"></i> Admin
+                                </a></li>
+                                <li><a class="dropdown-item" href="#" 
+                                       onclick="changeRole('{{ member_data.user._id }}', 'member')">
+                                    <i class="bi bi-person"></i> Membro
+                                </a></li>
+                                <li><a class="dropdown-item" href="#" 
+                                       onclick="changeRole('{{ member_data.user._id }}', 'viewer')">
+                                    <i class="bi bi-eye"></i> Visualizador
+                                </a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item text-danger" href="#" 
+                                       onclick="removeMember('{{ member_data.user._id }}')">
+                                    <i class="bi bi-person-x"></i> Remover
+                                </a></li>
+                            </ul>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="mt-2">
+                        <small class="text-muted">
+                            <i class="bi bi-calendar"></i> 
+                            Entrou em {{ format_date(member_data.joined_at) }}
+                        </small>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Convites Pendentes (apenas para admins) -->
+{% if is_admin %}
+<div class="card mt-4">
+    <div class="card-header">
+        <h6 class="mb-0"><i class="bi bi-envelope"></i> Convites Pendentes</h6>
+    </div>
+    <div class="card-body">
+        <div id="pendingInvites">
+            <div class="text-center">
+                <div class="loading"></div>
+                <p class="mt-2">Carregando convites...</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<script>
+// Carregar estatísticas da família
+document.addEventListener('DOMContentLoaded', function() {
+    loadFamilyStats();
+    {% if is_admin %}
+    loadPendingInvites();
+    {% endif %}
+});
+
+async function loadFamilyStats() {
+    try {
+        const response = await fetch(`/family/api/stats/{{ family._id }}`);
+        const stats = await response.json();
+        
+        document.getElementById('transactionCount').textContent = stats.transaction_count || 0;
+        document.getElementById('totalIncome').textContent = FinanceDash.Utils.formatCurrency(stats.summary.income || 0);
+        document.getElementById('totalExpense').textContent = FinanceDash.Utils.formatCurrency(stats.summary.expense || 0);
+    } catch (error) {
+        console.error('Erro ao carregar estatísticas:', error);
+    }
+}
+
+{% if is_admin %}
+async function loadPendingInvites() {
+    try {
+        const response = await fetch(`/family/api/invites/{{ family._id }}`);
+        const invites = await response.json();
+        
+        const container = document.getElementById('pendingInvites');
+        
+        if (invites.length === 0) {
+            container.innerHTML = '<p class="text-muted text-center">Nenhum convite pendente</p>';
+        } else {
+            let html = '<div class="table-responsive"><table class="table table-sm">';
+            html += '<thead><tr><th>Email</th><th>Papel</th><th>Código</th><th>Enviado</th><th>Expira</th></tr></thead><tbody>';
+            
+            invites.forEach(invite => {
+                const sentDate = new Date(invite.created_at).toLocaleDateString('pt-BR');
+                const expiresDate = new Date(invite.expires_at).toLocaleDateString('pt-BR');
+                
+                html += `
+                    <tr>
+                        <td>${invite.email}</td>
+                        <td><span class="badge bg-secondary">${invite.role}</span></td>
+                        <td><code>${invite.code}</code></td>
+                        <td>${sentDate}</td>
+                        <td>${expiresDate}</td>
+                    </tr>
+                `;
+            });
+            
+            html += '</tbody></table></div>';
+            container.innerHTML = html;
+        }
+    } catch (error) {
+        document.getElementById('pendingInvites').innerHTML = 
+            '<p class="text-danger text-center">Erro ao carregar convites</p>';
+    }
+}
+
+async function changeRole(memberId, newRole) {
+    if (!confirm(`Tem certeza que deseja alterar o papel deste membro para ${newRole}?`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('/family/change_role', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                family_id: '{{ family._id }}',
+                member_id: memberId,
+                role: newRole
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            FinanceDash.Notifications.success('Papel alterado com sucesso!');
+            window.location.reload();
+        } else {
+            FinanceDash.Notifications.error(data.error || 'Erro ao alterar papel');
+        }
+    } catch (error) {
+        FinanceDash.Notifications.error('Erro ao alterar papel');
+    }
+}
+
+async function removeMember(memberId) {
+    if (!confirm('Tem certeza que deseja remover este membro da família?')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('/family/remove_member', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                family_id: '{{ family._id }}',
+                member_id: memberId
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            FinanceDash.Notifications.success('Membro removido com sucesso!');
+            
+            // Remover da interface
+            const memberCard = document.querySelector(`[data-member-id="${memberId}"]`);
+            if (memberCard) {
+                memberCard.closest('.col-md-6').remove();
+            }
+        } else {
+            FinanceDash.Notifications.error(data.error || 'Erro ao remover membro');
+        }
+    } catch (error) {
+        FinanceDash.Notifications.error('Erro ao remover membro');
+    }
+}
+{% endif %}
+
+async function leaveFamily() {
+    if (!confirm('Tem certeza que deseja sair desta família? Esta ação não pode ser desfeita.')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/family/leave/{{ family._id }}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            FinanceDash.Notifications.success('Você saiu da família');
+            window.location.href = '/dashboard/overview';
+        } else {
+            FinanceDash.Notifications.error(data.error || 'Erro ao sair da família');
+        }
+    } catch (error) {
+        FinanceDash.Notifications.error('Erro ao sair da família');
+    }
+}
+</script>
+{% endblock %}

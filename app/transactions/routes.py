@@ -95,11 +95,12 @@ def add_transaction():
 @transactions.route('/edit/<transaction_id>', methods=['GET', 'POST'])
 @login_required
 def edit_transaction(transaction_id):
-    from app import mongo
+    from app import get_db
     
     try:
         # Buscar transação
-        transaction = mongo.db.transactions.find_one({'_id': ObjectId(transaction_id)})
+        db = get_db()
+        transaction = db.transactions.find_one({'_id': ObjectId(transaction_id)})
         if not transaction:
             flash('Transação não encontrada', 'error')
             return redirect(url_for('dashboard.transactions'))
@@ -152,7 +153,7 @@ def edit_transaction(transaction_id):
                 update_data['date'] = datetime.strptime(data['date'], '%Y-%m-%d')
             
             # Atualizar no banco
-            mongo.db.transactions.update_one(
+            db.transactions.update_one(
                 {'_id': ObjectId(transaction_id)},
                 {'$set': update_data}
             )
@@ -186,11 +187,12 @@ def edit_transaction(transaction_id):
 @transactions.route('/delete/<transaction_id>', methods=['POST', 'DELETE'])
 @login_required
 def delete_transaction(transaction_id):
-    from app import mongo
+    from app import get_db
     
     try:
         # Buscar transação
-        transaction = mongo.db.transactions.find_one({'_id': ObjectId(transaction_id)})
+        db = get_db()
+        transaction = db.transactions.find_one({'_id': ObjectId(transaction_id)})
         if not transaction:
             return jsonify({'success': False, 'error': 'Transação não encontrada'}), 404
         
@@ -204,7 +206,7 @@ def delete_transaction(transaction_id):
                 return jsonify({'success': False, 'error': 'Sem permissão'}), 403
         
         # Deletar
-        mongo.db.transactions.delete_one({'_id': ObjectId(transaction_id)})
+        db.transactions.delete_one({'_id': ObjectId(transaction_id)})
         
         return jsonify({'success': True, 'message': 'Transação excluída com sucesso!'})
         
@@ -351,7 +353,8 @@ def export_transactions():
             owner_id = user_id
         
         # Buscar transações
-        from app import mongo
+        from app import get_db
+        db = get_db()
         query = {
             'owner_id': ObjectId(owner_id),
             'owner_type': owner_type
@@ -363,7 +366,7 @@ def export_transactions():
                 '$lte': datetime.strptime(date_to, '%Y-%m-%d')
             }
         
-        transactions = mongo.db.transactions.find(query).sort('date', -1)
+        transactions = db.transactions.find(query).sort('date', -1)
         
         # Criar CSV
         output = io.StringIO()
@@ -450,15 +453,16 @@ def get_common_categories():
 
 def get_user_categories(owner_id, owner_type):
     """Busca categorias já utilizadas pelo usuário"""
-    from app import mongo
+    from app import get_db
     
+    db = get_db()
     pipeline = [
         {'$match': {'owner_id': ObjectId(owner_id), 'owner_type': owner_type}},
         {'$group': {'_id': '$category'}},
         {'$sort': {'_id': 1}}
     ]
     
-    result = mongo.db.transactions.aggregate(pipeline)
+    result = db.transactions.aggregate(pipeline)
     categories = [item['_id'] for item in result if item['_id']]
     
     # Adicionar categorias comuns que ainda não foram usadas
@@ -471,9 +475,10 @@ def get_user_categories(owner_id, owner_type):
 
 def check_family_permission(user_id, family_id, permission):
     """Verifica se usuário tem permissão específica na família"""
-    from app import mongo
+    from app import get_db
     
-    family = mongo.db.families.find_one({'_id': ObjectId(family_id)})
+    db = get_db()
+    family = db.families.find_one({'_id': ObjectId(family_id)})
     if not family:
         return False
     

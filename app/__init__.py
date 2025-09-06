@@ -24,11 +24,15 @@ def create_app(config_class=Config):
         print(f"🔗 Conectando ao MongoDB: {mongo_uri}")
         
         mongo_client = MongoClient(mongo_uri)
-        db = mongo_client.get_default_database()
+        
+        # CORRIGIDO: Especificar o nome do banco explicitamente
+        db_name = 'financedash'  # Nome do banco definido aqui
+        db = mongo_client[db_name]
         
         # Testar conexão
         info = mongo_client.admin.command('ping')
         print(f"✅ MongoDB conectado com sucesso: {info}")
+        print(f"📦 Banco de dados: {db_name}")
         
     except Exception as e:
         print(f"❌ Erro ao conectar MongoDB: {e}")
@@ -44,11 +48,17 @@ def create_app(config_class=Config):
     from app.dashboard.routes import dashboard
     from app.transactions.routes import transactions
     from app.family.routes import family
+    from app.budgets.routes import budgets
+    from app.reports.routes import reports
+    from app.notifications.routes import notifications
     
     app.register_blueprint(auth, url_prefix='/auth')
     app.register_blueprint(dashboard, url_prefix='/dashboard')
     app.register_blueprint(transactions, url_prefix='/transactions')
     app.register_blueprint(family, url_prefix='/family')
+    app.register_blueprint(budgets, url_prefix='/budgets')
+    app.register_blueprint(reports, url_prefix='/reports')
+    app.register_blueprint(notifications, url_prefix='/notifications')
     
     # Rota principal
     @app.route('/')
@@ -82,3 +92,21 @@ def create_app(config_class=Config):
 def get_db():
     """Retorna a instância do banco de dados"""
     return db
+
+# ADICIONADO: Classe para compatibilidade com Flask-PyMongo
+class MongoWrapper:
+    """Wrapper para simular Flask-PyMongo"""
+    def __init__(self):
+        self.db = None
+    
+    def init_app(self, app):
+        global db
+        self.db = db
+
+# Instância global para compatibilidade
+mongo = MongoWrapper()
+
+def init_mongo():
+    """Inicializa o wrapper do mongo após a criação do app"""
+    global mongo, db
+    mongo.db = db

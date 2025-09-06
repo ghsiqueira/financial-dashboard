@@ -33,8 +33,9 @@ def create_family():
             family_id = new_family.save()
             
             # Adicionar família ao usuário
-            from app import mongo
-            mongo.db.users.update_one(
+            from app import get_db
+            db = get_db()
+            db.users.update_one(
                 {'_id': ObjectId(user_id)},
                 {
                     '$push': {'families': family_id},
@@ -152,7 +153,8 @@ def invite():
             invite_code = generate_invite_code()
             
             # Salvar convite no banco
-            from app import mongo
+            from app import get_db
+            db = get_db()
             invite_data = {
                 'family_id': ObjectId(family_id),
                 'invited_by': ObjectId(user_id),
@@ -165,7 +167,7 @@ def invite():
                 'expires_at': datetime.utcnow().replace(hour=23, minute=59, second=59)  # Expira no final do dia
             }
             
-            mongo.db.invites.insert_one(invite_data)
+            db.invites.insert_one(invite_data)
             
             # TODO: Enviar email com convite
             # send_invite_email(invited_user.email, family_obj.name, invite_code)
@@ -215,8 +217,9 @@ def join():
                 raise ValueError('Código de convite é obrigatório')
             
             # Buscar convite
-            from app import mongo
-            invite = mongo.db.invites.find_one({
+            from app import get_db
+            db = get_db()
+            invite = db.invites.find_one({
                 'code': invite_code,
                 'status': 'pending',
                 'expires_at': {'$gte': datetime.utcnow()}
@@ -243,7 +246,7 @@ def join():
             family_obj.add_member(user_id, invite['role'])
             
             # Atualizar família no banco
-            mongo.db.families.update_one(
+            db.families.update_one(
                 {'_id': family_obj._id},
                 {'$set': {'members': family_obj.members}}
             )
@@ -256,13 +259,13 @@ def join():
             if not user.families:
                 user_update['$set'] = {'default_family': family_obj._id}
             
-            mongo.db.users.update_one(
+            db.users.update_one(
                 {'_id': ObjectId(user_id)},
                 user_update
             )
             
             # Marcar convite como aceito
-            mongo.db.invites.update_one(
+            db.invites.update_one(
                 {'_id': invite['_id']},
                 {'$set': {'status': 'accepted', 'accepted_at': datetime.utcnow()}}
             )
@@ -294,7 +297,8 @@ def join():
 def leave_family(family_id):
     try:
         user_id = session['user_id']
-        from app import mongo
+        from app import get_db
+        db = get_db()
         
         # Buscar família
         family_obj = Family.find_by_id(family_id)
@@ -334,10 +338,10 @@ def leave_family(family_id):
             
             user_update['$set'] = {'default_family': other_family}
         
-        mongo.db.users.update_one({'_id': ObjectId(user_id)}, user_update)
+        db.users.update_one({'_id': ObjectId(user_id)}, user_update)
         
         # Remover da lista de membros da família
-        mongo.db.families.update_one(
+        db.families.update_one(
             {'_id': ObjectId(family_id)},
             {'$pull': {'members': {'user_id': ObjectId(user_id)}}}
         )
@@ -372,10 +376,11 @@ def remove_member():
             return jsonify({'success': False, 'error': 'Use a opção "Sair da família" para se remover'}), 400
         
         # Remover membro
-        from app import mongo
+        from app import get_db
+        db = get_db()
         
         # Remover da família
-        mongo.db.families.update_one(
+        db.families.update_one(
             {'_id': ObjectId(family_id)},
             {'$pull': {'members': {'user_id': ObjectId(member_id)}}}
         )
@@ -393,7 +398,7 @@ def remove_member():
                     break
             user_update['$set'] = {'default_family': other_family}
         
-        mongo.db.users.update_one({'_id': ObjectId(member_id)}, user_update)
+        db.users.update_one({'_id': ObjectId(member_id)}, user_update)
         
         return jsonify({'success': True, 'message': 'Membro removido da família'})
         
@@ -436,12 +441,13 @@ def change_member_role():
                     }), 400
         
         # Atualizar papel
-        from app import mongo
+        from app import get_db
+        db = get_db()
         
         # Obter permissões do novo papel
         permissions = family_obj.get_default_permissions(new_role)
         
-        mongo.db.families.update_one(
+        db.families.update_one(
             {
                 '_id': ObjectId(family_id),
                 'members.user_id': ObjectId(member_id)
@@ -473,8 +479,9 @@ def switch_family(family_id):
             return redirect(url_for('dashboard.overview'))
         
         # Atualizar família padrão
-        from app import mongo
-        mongo.db.users.update_one(
+        from app import get_db
+        db = get_db()
+        db.users.update_one(
             {'_id': ObjectId(user_id)},
             {'$set': {'default_family': ObjectId(family_id)}}
         )
@@ -527,8 +534,9 @@ def family_settings(family_id):
                 settings_update['description'] = data['description'].strip()
             
             if settings_update:
-                from app import mongo
-                mongo.db.families.update_one(
+                from app import get_db
+                db = get_db()
+                db.families.update_one(
                     {'_id': ObjectId(family_id)},
                     {'$set': settings_update}
                 )
@@ -561,8 +569,9 @@ def api_family_invites(family_id):
             return jsonify({'error': 'Sem permissão'}), 403
         
         # Buscar convites
-        from app import mongo
-        invites = mongo.db.invites.find({
+        from app import get_db
+        db = get_db()
+        invites = db.invites.find({
             'family_id': ObjectId(family_id),
             'status': 'pending'
         }).sort('created_at', -1)
@@ -596,19 +605,21 @@ def api_family_stats(family_id):
             return jsonify({'error': 'Sem acesso'}), 403
         
         from app.models import Transaction
-        from app import mongo
+        from app import get_db
+        
+        db = get_db()
         
         # Resumo do mês atual
         summary = Transaction.get_monthly_summary(family_id, 'family')
         
         # Contadores
-        family_data = mongo.db.families.find_one(
+        family_data = db.families.find_one(
             {'_id': ObjectId(family_id)},
             {'members': 1}
         )
         member_count = len(family_data['members']) if family_data else 0
         
-        transaction_count = mongo.db.transactions.count_documents({
+        transaction_count = db.transactions.count_documents({
             'owner_id': ObjectId(family_id),
             'owner_type': 'family'
         })
@@ -636,7 +647,7 @@ def api_family_stats(family_id):
             {'$limit': 1}
         ]
         
-        top_spender_result = list(mongo.db.transactions.aggregate(top_spender_pipeline))
+        top_spender_result = list(db.transactions.aggregate(top_spender_pipeline))
         top_spender = None
         
         if top_spender_result:
@@ -677,8 +688,9 @@ def generate_invite_code():
     code = ''.join(secrets.choice(characters) for _ in range(length))
     
     # Verificar se já existe (muito improvável, mas por segurança)
-    from app import mongo
-    while mongo.db.invites.find_one({'code': code}):
+    from app import get_db
+    db = get_db()
+    while db.invites.find_one({'code': code}):
         code = ''.join(secrets.choice(characters) for _ in range(length))
     
     return code

@@ -1,7 +1,7 @@
 import plotly.graph_objs as go
 import plotly.utils
 from datetime import datetime, timedelta
-from app import mongo
+from app import get_db
 from bson.objectid import ObjectId
 import json
 
@@ -21,6 +21,7 @@ def generate_charts_data(owner_id, owner_type):
 def generate_expenses_pie_chart(owner_id, owner_type):
     """Gráfico de pizza dos gastos por categoria (últimos 30 dias)"""
     
+    db = get_db()
     start_date = datetime.now() - timedelta(days=30)
     
     pipeline = [
@@ -42,7 +43,7 @@ def generate_expenses_pie_chart(owner_id, owner_type):
         {'$limit': 10}  # Top 10 categorias
     ]
     
-    result = list(mongo.db.transactions.aggregate(pipeline))
+    result = list(db.transactions.aggregate(pipeline))
     
     if not result:
         return None
@@ -73,6 +74,7 @@ def generate_expenses_pie_chart(owner_id, owner_type):
 def generate_monthly_evolution_chart(owner_id, owner_type):
     """Gráfico de evolução mensal receitas vs despesas"""
     
+    db = get_db()
     # Últimos 12 meses
     end_date = datetime.now()
     start_date = end_date - timedelta(days=365)
@@ -98,7 +100,7 @@ def generate_monthly_evolution_chart(owner_id, owner_type):
         {'$sort': {'_id.year': 1, '_id.month': 1}}
     ]
     
-    result = list(mongo.db.transactions.aggregate(pipeline))
+    result = list(db.transactions.aggregate(pipeline))
     
     # Organizar dados
     months = []
@@ -187,6 +189,7 @@ def generate_monthly_evolution_chart(owner_id, owner_type):
 def generate_income_vs_expenses_chart(owner_id, owner_type):
     """Gráfico de barras comparando receitas vs despesas mensais"""
     
+    db = get_db()
     # Últimos 6 meses
     months_data = []
     
@@ -245,6 +248,7 @@ def generate_income_vs_expenses_chart(owner_id, owner_type):
 def generate_category_trends_chart(owner_id, owner_type):
     """Gráfico de tendências das principais categorias"""
     
+    db = get_db()
     # Buscar top 5 categorias dos últimos 3 meses
     start_date = datetime.now() - timedelta(days=90)
     
@@ -267,7 +271,7 @@ def generate_category_trends_chart(owner_id, owner_type):
         {'$limit': 5}
     ]
     
-    top_categories = list(mongo.db.transactions.aggregate(top_categories_pipeline))
+    top_categories = list(db.transactions.aggregate(top_categories_pipeline))
     
     if not top_categories:
         return None
@@ -318,6 +322,7 @@ def generate_category_trends_chart(owner_id, owner_type):
 def generate_daily_spending_chart(owner_id, owner_type):
     """Gráfico de gastos diários do mês atual"""
     
+    db = get_db()
     now = datetime.now()
     start_month = now.replace(day=1)
     
@@ -339,7 +344,7 @@ def generate_daily_spending_chart(owner_id, owner_type):
         {'$sort': {'_id': 1}}
     ]
     
-    result = list(mongo.db.transactions.aggregate(pipeline))
+    result = list(db.transactions.aggregate(pipeline))
     
     # Criar array com todos os dias do mês
     days_in_month = (now.replace(month=now.month+1, day=1) - timedelta(days=1)).day if now.month < 12 else 31
@@ -393,6 +398,7 @@ def get_month_summary(owner_id, owner_type, year, month):
 def get_category_month_total(owner_id, owner_type, category, start_date, end_date):
     """Total gasto em uma categoria em um período"""
     
+    db = get_db()
     pipeline = [
         {
             '$match': {
@@ -411,5 +417,5 @@ def get_category_month_total(owner_id, owner_type, category, start_date, end_dat
         }
     ]
     
-    result = list(mongo.db.transactions.aggregate(pipeline))
+    result = list(db.transactions.aggregate(pipeline))
     return result[0]['total'] if result else 0

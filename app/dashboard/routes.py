@@ -226,10 +226,11 @@ def api_charts(chart_type):
 
 # Funções auxiliares
 def get_user_budgets(owner_id, owner_type):
-    from app import mongo
+    from app import get_db
     from bson.objectid import ObjectId
     
-    budgets = mongo.db.budgets.find({
+    db = get_db()
+    budgets = db.budgets.find({
         'owner_id': ObjectId(owner_id),
         'owner_type': owner_type
     })
@@ -237,9 +238,10 @@ def get_user_budgets(owner_id, owner_type):
 
 def get_filtered_transactions(owner_id, owner_type, page, limit, category, 
                             transaction_type, date_from, date_to):
-    from app import mongo
+    from app import get_db
     from bson.objectid import ObjectId
     
+    db = get_db()
     query = {
         'owner_id': ObjectId(owner_id),
         'owner_type': owner_type
@@ -260,27 +262,29 @@ def get_filtered_transactions(owner_id, owner_type, page, limit, category,
         query['date'] = date_query
     
     skip = (page - 1) * limit
-    transactions = mongo.db.transactions.find(query).sort('date', -1).skip(skip).limit(limit)
+    transactions = db.transactions.find(query).sort('date', -1).skip(skip).limit(limit)
     
     return list(transactions)
 
 def get_categories(owner_id, owner_type):
-    from app import mongo
+    from app import get_db
     from bson.objectid import ObjectId
     
+    db = get_db()
     pipeline = [
         {'$match': {'owner_id': ObjectId(owner_id), 'owner_type': owner_type}},
         {'$group': {'_id': '$category'}},
         {'$sort': {'_id': 1}}
     ]
     
-    result = mongo.db.transactions.aggregate(pipeline)
+    result = db.transactions.aggregate(pipeline)
     return [item['_id'] for item in result if item['_id']]
 
 def get_expenses_by_category(owner_id, owner_type):
-    from app import mongo
+    from app import get_db
     from bson.objectid import ObjectId
     
+    db = get_db()
     # Últimos 30 dias
     start_date = datetime.now() - timedelta(days=30)
     
@@ -303,7 +307,7 @@ def get_expenses_by_category(owner_id, owner_type):
         {'$sort': {'total': -1}}
     ]
     
-    result = list(mongo.db.transactions.aggregate(pipeline))
+    result = list(db.transactions.aggregate(pipeline))
     
     return {
         'labels': [item['_id'] for item in result],
@@ -311,9 +315,10 @@ def get_expenses_by_category(owner_id, owner_type):
     }
 
 def get_monthly_evolution(owner_id, owner_type):
-    from app import mongo
+    from app import get_db
     from bson.objectid import ObjectId
     
+    db = get_db()
     # Últimos 12 meses
     end_date = datetime.now()
     start_date = end_date - timedelta(days=365)
@@ -339,7 +344,7 @@ def get_monthly_evolution(owner_id, owner_type):
         {'$sort': {'_id.year': 1, '_id.month': 1}}
     ]
     
-    result = list(mongo.db.transactions.aggregate(pipeline))
+    result = list(db.transactions.aggregate(pipeline))
     
     # Organizar dados para o gráfico
     months = []
@@ -380,9 +385,10 @@ def get_monthly_evolution(owner_id, owner_type):
     }
 
 def get_income_vs_expenses(owner_id, owner_type):
-    from app import mongo
+    from app import get_db
     from bson.objectid import ObjectId
     
+    db = get_db()
     # Últimos 6 meses
     pipeline = [
         {
@@ -400,7 +406,7 @@ def get_income_vs_expenses(owner_id, owner_type):
         }
     ]
     
-    result = list(mongo.db.transactions.aggregate(pipeline))
+    result = list(db.transactions.aggregate(pipeline))
     
     data = {'income': 0, 'expense': 0}
     for item in result:
@@ -412,9 +418,10 @@ def get_income_vs_expenses(owner_id, owner_type):
     }
 
 def generate_monthly_report(owner_id, owner_type, year, month):
-    from app import mongo
+    from app import get_db
     from bson.objectid import ObjectId
     
+    db = get_db()
     start_date = datetime(year, month, 1)
     if month == 12:
         end_date = datetime(year + 1, 1, 1)
@@ -443,9 +450,10 @@ def generate_monthly_report(owner_id, owner_type, year, month):
     }
 
 def generate_yearly_report(owner_id, owner_type, year):
-    from app import mongo
+    from app import get_db
     from bson.objectid import ObjectId
     
+    db = get_db()
     start_date = datetime(year, 1, 1)
     end_date = datetime(year + 1, 1, 1)
     
@@ -471,9 +479,10 @@ def generate_yearly_report(owner_id, owner_type, year):
     }
 
 def get_expenses_by_category_period(owner_id, owner_type, start_date, end_date):
-    from app import mongo
+    from app import get_db
     from bson.objectid import ObjectId
     
+    db = get_db()
     pipeline = [
         {
             '$match': {
@@ -493,13 +502,14 @@ def get_expenses_by_category_period(owner_id, owner_type, start_date, end_date):
         {'$sort': {'total': -1}}
     ]
     
-    return list(mongo.db.transactions.aggregate(pipeline))
+    return list(db.transactions.aggregate(pipeline))
 
 def get_period_transactions(owner_id, owner_type, start_date, end_date):
-    from app import mongo
+    from app import get_db
     from bson.objectid import ObjectId
     
-    transactions = mongo.db.transactions.find({
+    db = get_db()
+    transactions = db.transactions.find({
         'owner_id': ObjectId(owner_id),
         'owner_type': owner_type,
         'date': {'$gte': start_date, '$lt': end_date}

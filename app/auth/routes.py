@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity, create_access_token
 from app.models import User
-from app import mongo
+from app import get_db
 import re
 
 auth = Blueprint('auth', __name__)

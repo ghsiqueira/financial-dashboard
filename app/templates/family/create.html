@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}Criar Família - {{ super() }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">
+                    <i class="bi bi-people"></i> Criar Nova Família
+                </h4>
+            </div>
+            <div class="card-body">
+                <p class="text-muted mb-4">
+                    Crie uma família para compartilhar finanças e orçamentos com outros membros.
+                </p>
+                
+                <form method="POST" id="createFamilyForm">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Nome da Família *</label>
+                        <input type="text" class="form-control" id="name" name="name" 
+                               placeholder="Ex: Família Silva" required minlength="3">
+                        <div class="form-text">Mínimo 3 caracteres</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Descrição</label>
+                        <textarea class="form-control" id="description" name="description" 
+                                  rows="3" placeholder="Descrição opcional da família"></textarea>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i>
+                        <strong>Você será o administrador</strong> da família e poderá convidar outros membros.
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('dashboard.overview') }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left"></i> Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-plus-circle"></i> Criar Família
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('createFamilyForm').addEventListener('submit', function(e) {
+    const name = document.getElementById('name').value.trim();
+    
+    if (name.length < 3) {
+        e.preventDefault();
+        alert('Nome da família deve ter pelo menos 3 caracteres');
+        return;
+    }
+    
+    // Mostrar loading
+    const submitBtn = this.querySelector('button[type="submit"]');
+    submitBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Criando...';
+    submitBtn.disabled = true;
+});
+</script>
+{% endblock %}
