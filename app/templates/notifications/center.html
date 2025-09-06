@@ -1,0 +1,571 @@
+{% extends "base.html" %}
+
+{% block title %}Central de Notificações - {{ super() }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .notification-item {
+        border-left: 4px solid;
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+    
+    .notification-item:hover {
+        background-color: rgba(0,0,0,0.02);
+        transform: translateX(5px);
+    }
+    
+    .notification-item.unread {
+        background-color: rgba(13, 110, 253, 0.05);
+    }
+    
+    .notification-item.budget_exceeded {
+        border-left-color: #dc3545;
+    }
+    
+    .notification-item.budget_warning {
+        border-left-color: #ffc107;
+    }
+    
+    .notification-item.family_invite {
+        border-left-color: #0dcaf0;
+    }
+    
+    .notification-item.financial_insight {
+        border-left-color: #198754;
+    }
+    
+    .notification-item.read {
+        opacity: 0.7;
+    }
+    
+    .notification-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        color: white;
+    }
+    
+    .notification-icon.danger { background-color: #dc3545; }
+    .notification-icon.warning { background-color: #ffc107; }
+    .notification-icon.info { background-color: #0dcaf0; }
+    .notification-icon.success { background-color: #198754; }
+    
+    .filter-tabs .nav-link {
+        border-radius: 20px;
+        margin-right: 0.5rem;
+    }
+    
+    .filter-tabs .nav-link.active {
+        background-color: var(--bs-primary);
+        color: white;
+    }
+    
+    .notification-actions {
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+    
+    .notification-item:hover .notification-actions {
+        opacity: 1;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-bell"></i> Central de Notificações</h2>
+    <div class="btn-group">
+        <button class="btn btn-outline-primary" onclick="markAllRead()">
+            <i class="bi bi-check-all"></i> Marcar todas como lidas
+        </button>
+        <button class="btn btn-outline-secondary" onclick="refreshNotifications()">
+            <i class="bi bi-arrow-clockwise"></i> Atualizar
+        </button>
+    </div>
+</div>
+
+<!-- Estatísticas -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-center border-primary">
+            <div class="card-body">
+                <i class="bi bi-envelope display-4 text-primary mb-2"></i>
+                <h4 class="text-primary" id="totalNotifications">-</h4>
+                <small class="text-muted">Total</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center border-warning">
+            <div class="card-body">
+                <i class="bi bi-envelope-open display-4 text-warning mb-2"></i>
+                <h4 class="text-warning" id="unreadNotifications">-</h4>
+                <small class="text-muted">Não lidas</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center border-danger">
+            <div class="card-body">
+                <i class="bi bi-exclamation-triangle display-4 text-danger mb-2"></i>
+                <h4 class="text-danger" id="alertNotifications">-</h4>
+                <small class="text-muted">Alertas</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center border-info">
+            <div class="card-body">
+                <i class="bi bi-people display-4 text-info mb-2"></i>
+                <h4 class="text-info" id="familyNotifications">-</h4>
+                <small class="text-muted">Família</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filtros -->
+<div class="card mb-4">
+    <div class="card-body">
+        <ul class="nav nav-pills filter-tabs">
+            <li class="nav-item">
+                <a class="nav-link active" href="#" data-filter="all">
+                    <i class="bi bi-list"></i> Todas
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#" data-filter="unread">
+                    <i class="bi bi-envelope"></i> Não lidas
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#" data-filter="budget_exceeded,budget_warning">
+                    <i class="bi bi-piggy-bank"></i> Orçamentos
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#" data-filter="family_invite">
+                    <i class="bi bi-people"></i> Família
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#" data-filter="financial_insight">
+                    <i class="bi bi-lightbulb"></i> Insights
+                </a>
+            </li>
+        </ul>
+    </div>
+</div>
+
+<!-- Lista de Notificações -->
+<div class="card">
+    <div class="card-body p-0">
+        <div id="notificationsList">
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Carregando...</span>
+                </div>
+                <p class="mt-3">Carregando notificações...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Paginação -->
+<nav class="mt-4">
+    <ul class="pagination justify-content-center" id="pagination">
+        <!-- Será preenchido via JavaScript -->
+    </ul>
+</nav>
+
+<!-- Modal Detalhes da Notificação -->
+<div class="modal fade" id="notificationModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="notificationModalTitle">Detalhes da Notificação</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="notificationModalBody">
+                <!-- Conteúdo será preenchido via JavaScript -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                <button type="button" class="btn btn-primary" id="notificationAction">Ação</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Templates para diferentes tipos de notificação -->
+<template id="budgetNotificationTemplate">
+    <div class="notification-item p-3 {type}" data-id="{id}" data-type="{type}">
+        <div class="d-flex align-items-start">
+            <div class="notification-icon {iconClass} me-3">
+                <i class="bi {icon}"></i>
+            </div>
+            <div class="flex-grow-1">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h6 class="mb-1">{title}</h6>
+                        <p class="mb-1 text-muted">{message}</p>
+                        <small class="text-muted">
+                            <i class="bi bi-clock"></i> {timeAgo}
+                        </small>
+                    </div>
+                    <div class="notification-actions">
+                        <button class="btn btn-sm btn-outline-primary" onclick="markAsRead('{id}')">
+                            <i class="bi bi-check"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="showDetails('{id}')">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                {progressBar}
+            </div>
+        </div>
+    </div>
+</template>
+
+<script>
+let currentFilter = 'all';
+let currentPage = 1;
+let notifications = [];
+
+// Carregar notificações
+document.addEventListener('DOMContentLoaded', function() {
+    loadNotifications();
+    
+    // Event listeners para filtros
+    document.querySelectorAll('[data-filter]').forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            // Atualizar UI
+            document.querySelectorAll('[data-filter]').forEach(l => l.classList.remove('active'));
+            this.classList.add('active');
+            
+            // Aplicar filtro
+            currentFilter = this.getAttribute('data-filter');
+            currentPage = 1;
+            filterNotifications();
+        });
+    });
+});
+
+async function loadNotifications() {
+    try {
+        const response = await fetch(`/notifications/api/user/{{ session.user_id }}`);
+        const data = await response.json();
+        
+        notifications = data.notifications;
+        updateStatistics(data);
+        renderNotifications();
+        
+    } catch (error) {
+        console.error('Erro ao carregar notificações:', error);
+        showError('Erro ao carregar notificações');
+    }
+}
+
+function updateStatistics(data) {
+    document.getElementById('totalNotifications').textContent = data.notifications.length;
+    document.getElementById('unreadNotifications').textContent = data.unread_count;
+    
+    const alertCount = data.notifications.filter(n => 
+        n.type.includes('budget_exceeded') || n.priority === 1
+    ).length;
+    document.getElementById('alertNotifications').textContent = alertCount;
+    
+    const familyCount = data.notifications.filter(n => 
+        n.type === 'family_invite'
+    ).length;
+    document.getElementById('familyNotifications').textContent = familyCount;
+}
+
+function renderNotifications() {
+    const container = document.getElementById('notificationsList');
+    
+    if (notifications.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-5">
+                <i class="bi bi-inbox display-1 text-muted"></i>
+                <h4 class="mt-3">Nenhuma notificação</h4>
+                <p class="text-muted">Você está em dia com tudo!</p>
+            </div>
+        `;
+        return;
+    }
+    
+    // Filtrar notificações
+    let filteredNotifications = filterNotificationsByType(notifications, currentFilter);
+    
+    // Renderizar
+    let html = '';
+    filteredNotifications.forEach(notification => {
+        html += renderNotificationItem(notification);
+    });
+    
+    container.innerHTML = html;
+}
+
+function filterNotificationsByType(notifications, filter) {
+    if (filter === 'all') return notifications;
+    if (filter === 'unread') return notifications.filter(n => !n.read);
+    
+    const types = filter.split(',');
+    return notifications.filter(n => types.includes(n.type));
+}
+
+function renderNotificationItem(notification) {
+    const timeAgo = getTimeAgo(notification.created_at);
+    const iconClass = getIconClass(notification.type);
+    const icon = getIcon(notification.type);
+    
+    let progressBar = '';
+    if (notification.percentage !== undefined) {
+        const progressClass = notification.percentage >= 100 ? 'danger' : 
+                            notification.percentage >= 80 ? 'warning' : 'success';
+        progressBar = `
+            <div class="progress mt-2" style="height: 6px;">
+                <div class="progress-bar bg-${progressClass}" 
+                     style="width: ${Math.min(notification.percentage, 100)}%"></div>
+            </div>
+            <small class="text-muted">${notification.percentage.toFixed(1)}% do orçamento utilizado</small>
+        `;
+    }
+    
+    return `
+        <div class="notification-item p-3 ${notification.type} ${notification.read ? 'read' : 'unread'}" 
+             data-id="${notification.id}" data-type="${notification.type}"
+             onclick="toggleNotification('${notification.id}')">
+            <div class="d-flex align-items-start">
+                <div class="notification-icon ${iconClass} me-3">
+                    <i class="bi ${icon}"></i>
+                </div>
+                <div class="flex-grow-1">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h6 class="mb-1">${notification.title}</h6>
+                            <p class="mb-1 text-muted">${notification.message}</p>
+                            <small class="text-muted">
+                                <i class="bi bi-clock"></i> ${timeAgo}
+                            </small>
+                            ${!notification.read ? '<span class="badge bg-primary ms-2">Nova</span>' : ''}
+                        </div>
+                        <div class="notification-actions">
+                            <button class="btn btn-sm btn-outline-primary" onclick="markAsRead('${notification.id}'); event.stopPropagation();">
+                                <i class="bi bi-check"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-secondary" onclick="showDetails('${notification.id}'); event.stopPropagation();">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+                    ${progressBar}
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function getIconClass(type) {
+    const classes = {
+        'budget_exceeded': 'danger',
+        'budget_warning': 'warning',
+        'family_invite': 'info',
+        'financial_insight': 'success',
+        'transaction_reminder': 'info'
+    };
+    return classes[type] || 'info';
+}
+
+function getIcon(type) {
+    const icons = {
+        'budget_exceeded': 'bi-exclamation-triangle-fill',
+        'budget_warning': 'bi-exclamation-triangle',
+        'family_invite': 'bi-people',
+        'financial_insight': 'bi-lightbulb',
+        'transaction_reminder': 'bi-clock'
+    };
+    return icons[type] || 'bi-bell';
+}
+
+function getTimeAgo(dateString) {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInSeconds = Math.floor((now - date) / 1000);
+    
+    if (diffInSeconds < 60) return 'Agora mesmo';
+    if (diffInSeconds < 3600) return Math.floor(diffInSeconds / 60) + 'm atrás';
+    if (diffInSeconds < 86400) return Math.floor(diffInSeconds / 3600) + 'h atrás';
+    if (diffInSeconds < 604800) return Math.floor(diffInSeconds / 86400) + 'd atrás';
+    
+    return date.toLocaleDateString('pt-BR');
+}
+
+async function markAsRead(notificationId) {
+    try {
+        const response = await fetch('/notifications/api/mark_read', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ notification_id: notificationId })
+        });
+        
+        if (response.ok) {
+            // Atualizar UI
+            const notification = notifications.find(n => n.id === notificationId);
+            if (notification) {
+                notification.read = true;
+                renderNotifications();
+                updateStatistics({ notifications, unread_count: notifications.filter(n => !n.read).length });
+            }
+        }
+    } catch (error) {
+        console.error('Erro ao marcar como lida:', error);
+    }
+}
+
+async function markAllRead() {
+    if (!confirm('Marcar todas as notificações como lidas?')) return;
+    
+    try {
+        const response = await fetch('/notifications/api/mark_all_read', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+        
+        if (response.ok) {
+            notifications.forEach(n => n.read = true);
+            renderNotifications();
+            updateStatistics({ notifications, unread_count: 0 });
+            FinanceDash.Notifications.success('Todas as notificações foram marcadas como lidas');
+        }
+    } catch (error) {
+        FinanceDash.Notifications.error('Erro ao marcar notificações');
+    }
+}
+
+function refreshNotifications() {
+    loadNotifications();
+    FinanceDash.Notifications.info('Notificações atualizadas');
+}
+
+function toggleNotification(notificationId) {
+    const notification = notifications.find(n => n.id === notificationId);
+    if (notification && !notification.read) {
+        markAsRead(notificationId);
+    }
+}
+
+function showDetails(notificationId) {
+    const notification = notifications.find(n => n.id === notificationId);
+    if (!notification) return;
+    
+    const modal = new bootstrap.Modal(document.getElementById('notificationModal'));
+    const titleEl = document.getElementById('notificationModalTitle');
+    const bodyEl = document.getElementById('notificationModalBody');
+    const actionBtn = document.getElementById('notificationAction');
+    
+    titleEl.textContent = notification.title;
+    
+    let bodyContent = `
+        <div class="mb-3">
+            <strong>Mensagem:</strong>
+            <p class="text-muted">${notification.message}</p>
+        </div>
+        <div class="mb-3">
+            <strong>Data:</strong>
+            <p class="text-muted">${new Date(notification.created_at).toLocaleString('pt-BR')}</p>
+        </div>
+    `;
+    
+    // Conteúdo específico por tipo
+    if (notification.type.includes('budget')) {
+        bodyContent += `
+            <div class="mb-3">
+                <strong>Categoria:</strong>
+                <span class="badge bg-secondary">${notification.category}</span>
+            </div>
+            <div class="mb-3">
+                <strong>Orçamento:</strong>
+                <div class="d-flex justify-content-between">
+                    <span>Gasto:</span>
+                    <span class="text-danger">${FinanceDash.Utils.formatCurrency(notification.spent || 0)}</span>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <span>Limite:</span>
+                    <span>${FinanceDash.Utils.formatCurrency(notification.limit || 0)}</span>
+                </div>
+                <div class="progress mt-2">
+                    <div class="progress-bar ${notification.percentage >= 100 ? 'bg-danger' : notification.percentage >= 80 ? 'bg-warning' : 'bg-success'}" 
+                         style="width: ${Math.min(notification.percentage || 0, 100)}%"></div>
+                </div>
+            </div>
+        `;
+        
+        actionBtn.textContent = 'Ver Orçamentos';
+        actionBtn.onclick = () => {
+            window.location.href = '/dashboard/budgets';
+        };
+    } else if (notification.type === 'family_invite') {
+        bodyContent += `
+            <div class="mb-3">
+                <strong>Família:</strong>
+                <span class="badge bg-info">${notification.family_name || 'Família'}</span>
+            </div>
+            <div class="mb-3">
+                <strong>Convidado por:</strong>
+                <span>${notification.inviter_name || 'Membro da família'}</span>
+            </div>
+            <div class="mb-3">
+                <strong>Papel:</strong>
+                <span class="badge bg-secondary">${notification.role || 'member'}</span>
+            </div>
+            <div class="mb-3">
+                <strong>Código:</strong>
+                <code>${notification.invite_code || ''}</code>
+            </div>
+        `;
+        
+        actionBtn.textContent = 'Aceitar Convite';
+        actionBtn.onclick = () => {
+            window.location.href = '/family/join?code=' + (notification.invite_code || '');
+        };
+    } else {
+        actionBtn.style.display = 'none';
+    }
+    
+    bodyEl.innerHTML = bodyContent;
+    modal.show();
+}
+
+function filterNotifications() {
+    renderNotifications();
+}
+
+function showError(message) {
+    document.getElementById('notificationsList').innerHTML = `
+        <div class="text-center py-5">
+            <i class="bi bi-exclamation-triangle display-1 text-danger"></i>
+            <h4 class="mt-3">Erro</h4>
+            <p class="text-muted">${message}</p>
+            <button class="btn btn-primary" onclick="loadNotifications()">
+                <i class="bi bi-arrow-clockwise"></i> Tentar novamente
+            </button>
+        </div>
+    `;
+}
+
+// Auto-refresh a cada 5 minutos
+setInterval(loadNotifications, 300000);

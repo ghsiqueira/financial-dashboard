@@ -8,13 +8,38 @@ import json
 def generate_charts_data(owner_id, owner_type):
     """Gera todos os dados dos gráficos para o dashboard"""
     
-    charts = {
-        'expenses_pie': generate_expenses_pie_chart(owner_id, owner_type),
-        'monthly_evolution': generate_monthly_evolution_chart(owner_id, owner_type),
-        'income_vs_expenses': generate_income_vs_expenses_chart(owner_id, owner_type),
-        'category_trends': generate_category_trends_chart(owner_id, owner_type),
-        'daily_spending': generate_daily_spending_chart(owner_id, owner_type)
-    }
+    charts = {}
+    
+    # 🛡️ Gerar cada gráfico com tratamento de erro individual
+    try:
+        charts['expenses_pie'] = generate_expenses_pie_chart(owner_id, owner_type)
+    except Exception as e:
+        print(f"Erro no gráfico de pizza: {e}")
+        charts['expenses_pie'] = None
+    
+    try:
+        charts['monthly_evolution'] = generate_monthly_evolution_chart(owner_id, owner_type)
+    except Exception as e:
+        print(f"Erro no gráfico de evolução: {e}")
+        charts['monthly_evolution'] = None
+    
+    try:
+        charts['income_vs_expenses'] = generate_income_vs_expenses_chart(owner_id, owner_type)
+    except Exception as e:
+        print(f"Erro no gráfico receitas vs despesas: {e}")
+        charts['income_vs_expenses'] = None
+    
+    try:
+        charts['category_trends'] = generate_category_trends_chart(owner_id, owner_type)
+    except Exception as e:
+        print(f"Erro no gráfico de tendências: {e}")
+        charts['category_trends'] = None
+        
+    try:
+        charts['daily_spending'] = generate_daily_spending_chart(owner_id, owner_type)
+    except Exception as e:
+        print(f"Erro no gráfico diário: {e}")
+        charts['daily_spending'] = None
     
     return charts
 
@@ -320,7 +345,7 @@ def generate_category_trends_chart(owner_id, owner_type):
     return json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
 
 def generate_daily_spending_chart(owner_id, owner_type):
-    """Gráfico de gastos diários do mês atual"""
+    """Gráfico de gastos diários do mês atual - VERSÃO CORRIGIDA"""
     
     db = get_db()
     now = datetime.now()
@@ -346,8 +371,16 @@ def generate_daily_spending_chart(owner_id, owner_type):
     
     result = list(db.transactions.aggregate(pipeline))
     
-    # Criar array com todos os dias do mês
-    days_in_month = (now.replace(month=now.month+1, day=1) - timedelta(days=1)).day if now.month < 12 else 31
+    # Criar array com todos os dias do mês - CORRIGIDO
+    try:
+        if now.month == 12:
+            days_in_month = 31
+        else:
+            next_month = now.replace(month=now.month+1, day=1)
+            days_in_month = (next_month - timedelta(days=1)).day
+    except:
+        days_in_month = 31  # Fallback para dezembro
+    
     daily_data = [0] * days_in_month
     
     for item in result:
@@ -369,14 +402,27 @@ def generate_daily_spending_chart(owner_id, owner_type):
                       '<extra></extra>'
     ))
     
-    # Adicionar linha da média
-    if daily_data:
-        avg_spending = sum(daily_data) / len([x for x in daily_data if x > 0])
+    # 🔧 FIX: Adicionar linha da média apenas se houver dados
+    spending_days = [x for x in daily_data if x > 0]
+    if spending_days:  # Só calcular média se houver gastos
+        avg_spending = sum(spending_days) / len(spending_days)
         fig.add_hline(
             y=avg_spending,
             line_dash="dash",
             line_color="red",
             annotation_text=f"Média: R$ {avg_spending:,.2f}"
+        )
+    else:
+        # Se não há gastos, adicionar uma anotação informativa
+        fig.add_annotation(
+            x=days_in_month // 2,
+            y=50,  # Valor fixo para posicionamento
+            text="Nenhum gasto registrado neste mês",
+            showarrow=False,
+            font=dict(size=14, color="gray"),
+            bgcolor="rgba(255,255,255,0.8)",
+            bordercolor="gray",
+            borderwidth=1
         )
     
     fig.update_layout(
@@ -384,7 +430,9 @@ def generate_daily_spending_chart(owner_id, owner_type):
         xaxis_title='Dia do Mês',
         yaxis_title='Valor (R$)',
         height=400,
-        margin=dict(t=50, b=50, l=50, r=50)
+        margin=dict(t=50, b=50, l=50, r=50),
+        # Garantir que o eixo Y sempre apareça
+        yaxis=dict(range=[0, max(daily_data) * 1.1 if max(daily_data) > 0 else 100])
     )
     
     return json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
@@ -393,7 +441,10 @@ def generate_daily_spending_chart(owner_id, owner_type):
 def get_month_summary(owner_id, owner_type, year, month):
     """Resumo financeiro de um mês específico"""
     from app.models import Transaction
-    return Transaction.get_monthly_summary(owner_id, owner_type, year, month)
+    try:
+        return Transaction.get_monthly_summary(owner_id, owner_type, year, month)
+    except:
+        return {'income': 0, 'expense': 0, 'balance': 0}
 
 def get_category_month_total(owner_id, owner_type, category, start_date, end_date):
     """Total gasto em uma categoria em um período"""

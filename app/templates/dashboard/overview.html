@@ -26,44 +26,161 @@
         font-size: 2rem;
         margin-bottom: 0.5rem;
     }
+    
+    .account-switcher {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 1rem;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        border: none;
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    }
+    
+    .account-switcher .btn-group .btn {
+        border-radius: 0.5rem;
+        font-weight: 600;
+        padding: 0.75rem 1.5rem;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        background: rgba(255, 255, 255, 0.1);
+        color: white;
+        margin: 0 0.25rem;
+    }
+    
+    .account-switcher .btn-group .btn.active {
+        background: white;
+        color: #667eea;
+        border-color: white;
+    }
+    
+    .account-switcher .btn-group .btn:hover {
+        background: rgba(255, 255, 255, 0.2);
+        border-color: rgba(255, 255, 255, 0.5);
+    }
+    
+    .family-header {
+        text-align: center;
+        margin-bottom: 1rem;
+    }
+    
+    .family-header h4 {
+        margin-bottom: 0.5rem;
+    }
+    
+    .family-actions-header {
+        display: flex;
+        justify-content: center;
+        gap: 1rem;
+        margin-top: 1rem;
+        flex-wrap: wrap;
+    }
+    
+    .family-actions-header .btn {
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        background: rgba(255, 255, 255, 0.1);
+        color: white;
+        font-weight: 500;
+        padding: 0.5rem 1rem;
+        border-radius: 0.5rem;
+    }
+    
+    .family-actions-header .btn:hover {
+        background: rgba(255, 255, 255, 0.2);
+        border-color: rgba(255, 255, 255, 0.5);
+        color: white;
+        transform: translateY(-1px);
+    }
+    
+    @media (max-width: 768px) {
+        .family-actions-header {
+            gap: 0.5rem;
+        }
+        
+        .family-actions-header .btn {
+            font-size: 0.875rem;
+            padding: 0.4rem 0.8rem;
+        }
+        
+        .account-switcher .btn-group .btn {
+            padding: 0.5rem 1rem;
+            font-size: 0.9rem;
+        }
+    }
 </style>
 {% endblock %}
 
 {% block content %}
 <body data-page="dashboard">
 
-<!-- Seletor de Conta -->
-<div class="account-selector">
-    <div class="d-flex justify-content-between align-items-center">
-        <h5 class="mb-0">
-            <i class="bi bi-{% if active_account == 'family' %}people{% else %}person{% endif %}"></i>
-            {% if active_account == 'family' %}
-                Conta Familiar
-                {% if active_family_id %}
+<!-- 🔥 NOVO: Seletor de Conta Melhorado -->
+<div class="account-switcher">
+    <div class="family-header">
+        {% if active_account == 'family' %}
+            <i class="bi bi-people display-6"></i>
+            <h4>
+                {% if user_families %}
                     {% for family in user_families %}
                         {% if family._id|string == active_family_id %}
-                            - {{ family.name }}
+                            {{ family.name }}
                         {% endif %}
                     {% endfor %}
+                {% else %}
+                    Conta Familiar
                 {% endif %}
-            {% else %}
-                Conta Individual
-            {% endif %}
-        </h5>
-        
+            </h4>
+            <p class="mb-0 opacity-75">Finanças compartilhadas da família</p>
+        {% else %}
+            <i class="bi bi-person display-6"></i>
+            <h4>Conta Individual</h4>
+            <p class="mb-0 opacity-75">Suas finanças pessoais</p>
+        {% endif %}
+    </div>
+    
+    <div class="d-flex justify-content-center">
         <div class="btn-group" role="group">
             <a href="{{ url_for('dashboard.overview', account='individual') }}" 
-               class="btn btn-sm {% if active_account == 'individual' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+               class="btn {% if active_account == 'individual' %}active{% endif %}">
                 <i class="bi bi-person"></i> Individual
             </a>
             {% if user_families %}
                 <a href="{{ url_for('dashboard.overview', account='family') }}" 
-                   class="btn btn-sm {% if active_account == 'family' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                   class="btn {% if active_account == 'family' %}active{% endif %}">
                     <i class="bi bi-people"></i> Família
                 </a>
             {% endif %}
         </div>
     </div>
+    
+    <!-- 🎯 BOTÕES DE AÇÃO (só para família) -->
+    {% if active_account == 'family' and user_families %}
+        <div class="family-actions-header">
+            {% set family_id = user_families[0]._id if user_families else none %}
+            {% if family_id %}
+            <a href="{{ url_for('family.manage', family_id=family_id) }}" 
+               class="btn btn-sm">
+                <i class="bi bi-people"></i> Gerenciar Família
+            </a>
+            <a href="{{ url_for('family.invite', family_id=family_id) }}" 
+               class="btn btn-sm">
+                <i class="bi bi-person-plus"></i> Convidar Membros
+            </a>
+            <a href="{{ url_for('family.family_settings', family_id=family_id) }}" 
+               class="btn btn-sm">
+                <i class="bi bi-gear"></i> Configurações
+            </a>
+            {% endif %}
+        </div>
+    {% elif active_account == 'individual' and not user_families %}
+        <!-- Botões para criar família quando não tem nenhuma -->
+        <div class="family-actions-header">
+            <a href="{{ url_for('family.create_family') }}" class="btn btn-sm">
+                <i class="bi bi-plus-circle"></i> Criar Família
+            </a>
+            <a href="{{ url_for('family.join') }}" class="btn btn-sm">
+                <i class="bi bi-box-arrow-in-right"></i> Entrar em Família
+            </a>
+        </div>
+    {% endif %}
 </div>
 
 <!-- Cards de Resumo -->
@@ -127,28 +244,28 @@
             <div class="card-body">
                 <div class="row">
                     <div class="col-md-3 col-6 mb-3">
-                        <a href="{{ url_for('transactions.add_transaction') }}" 
+                        <a href="{{ url_for('transactions.add_transaction') }}{% if active_account == 'family' %}?account=family{% endif %}" 
                            class="quick-action-btn bg-gradient-success text-white">
                             <i class="bi bi-plus-circle"></i>
                             <span>Nova Receita</span>
                         </a>
                     </div>
                     <div class="col-md-3 col-6 mb-3">
-                        <a href="{{ url_for('transactions.add_transaction') }}?type=expense" 
+                        <a href="{{ url_for('transactions.add_transaction') }}?type=expense{% if active_account == 'family' %}&account=family{% endif %}" 
                            class="quick-action-btn bg-gradient-danger text-white">
                             <i class="bi bi-dash-circle"></i>
                             <span>Nova Despesa</span>
                         </a>
                     </div>
                     <div class="col-md-3 col-6 mb-3">
-                        <a href="{{ url_for('transactions.import_transactions') }}" 
+                        <a href="{{ url_for('transactions.import_transactions') }}{% if active_account == 'family' %}?account=family{% endif %}" 
                            class="quick-action-btn bg-gradient-primary text-white">
                             <i class="bi bi-upload"></i>
                             <span>Importar</span>
                         </a>
                     </div>
                     <div class="col-md-3 col-6 mb-3">
-                        <a href="{{ url_for('dashboard.reports') }}" 
+                        <a href="{{ url_for('dashboard.reports') }}{% if active_account == 'family' %}?account=family{% endif %}" 
                            class="quick-action-btn bg-gradient-info text-white">
                             <i class="bi bi-file-earmark-text"></i>
                             <span>Relatórios</span>
@@ -166,14 +283,40 @@
     <div class="col-lg-8">
         <!-- Evolução Mensal -->
         <div class="chart-container mb-4">
-            <div class="chart-title">Evolução Financeira</div>
-            <div id="chart-monthly-evolution" style="height: 400px;"></div>
+            <div class="chart-title">
+                <i class="bi bi-graph-up"></i> Evolução Financeira
+                <small class="text-muted ms-2">(Últimos 12 meses)</small>
+            </div>
+            <div id="chart-monthly-evolution" style="height: 400px;">
+                {% if not charts_data.monthly_evolution %}
+                <div class="d-flex align-items-center justify-content-center h-100">
+                    <div class="text-center text-muted">
+                        <i class="bi bi-graph-up display-4"></i>
+                        <p class="mt-2">Dados do gráfico não disponíveis</p>
+                        <small>Adicione transações para ver a evolução</small>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
         </div>
         
         <!-- Gastos por Categoria -->
         <div class="chart-container">
-            <div class="chart-title">Gastos por Categoria</div>
-            <div id="chart-expenses-by-category" style="height: 400px;"></div>
+            <div class="chart-title">
+                <i class="bi bi-pie-chart"></i> Gastos por Categoria
+                <small class="text-muted ms-2">(Últimos 30 dias)</small>
+            </div>
+            <div id="chart-expenses-by-category" style="height: 400px;">
+                {% if not charts_data.expenses_pie %}
+                <div class="d-flex align-items-center justify-content-center h-100">
+                    <div class="text-center text-muted">
+                        <i class="bi bi-pie-chart display-4"></i>
+                        <p class="mt-2">Nenhum gasto registrado</p>
+                        <small>Adicione despesas para ver o gráfico</small>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
         </div>
     </div>
     
@@ -183,7 +326,8 @@
         <div class="card mb-4">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h6 class="mb-0"><i class="bi bi-clock-history"></i> Transações Recentes</h6>
-                <a href="{{ url_for('dashboard.transactions') }}" class="btn btn-sm btn-outline-primary">
+                <a href="{{ url_for('dashboard.transactions') }}{% if active_account == 'family' %}?account=family{% endif %}" 
+                   class="btn btn-sm btn-outline-primary">
                     Ver todas
                 </a>
             </div>
@@ -211,7 +355,8 @@
                         <div class="p-3 text-center text-muted">
                             <i class="bi bi-inbox display-4"></i>
                             <p class="mt-2">Nenhuma transação encontrada</p>
-                            <a href="{{ url_for('transactions.add_transaction') }}" class="btn btn-primary btn-sm">
+                            <a href="{{ url_for('transactions.add_transaction') }}{% if active_account == 'family' %}?account=family{% endif %}" 
+                               class="btn btn-primary btn-sm">
                                 Adicionar primeira transação
                             </a>
                         </div>
@@ -225,7 +370,8 @@
         <div class="card mb-4">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h6 class="mb-0"><i class="bi bi-piggy-bank"></i> Orçamentos</h6>
-                <a href="{{ url_for('dashboard.budgets') }}" class="btn btn-sm btn-outline-primary">
+                <a href="{{ url_for('dashboard.budgets') }}{% if active_account == 'family' %}?account=family{% endif %}" 
+                   class="btn btn-sm btn-outline-primary">
                     Gerenciar
                 </a>
             </div>
@@ -253,6 +399,27 @@
                     </small>
                 </div>
                 {% endfor %}
+                
+                {% if budgets|length > 3 %}
+                <div class="text-center">
+                    <small class="text-muted">E mais {{ budgets|length - 3 }} orçamento{{ 's' if budgets|length - 3 != 1 else '' }}...</small>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% else %}
+        <!-- Card para criar orçamentos -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-piggy-bank"></i> Orçamentos</h6>
+            </div>
+            <div class="card-body text-center">
+                <i class="bi bi-piggy-bank display-4 text-muted"></i>
+                <p class="mt-2 mb-3 text-muted">Nenhum orçamento configurado</p>
+                <a href="{{ url_for('dashboard.budgets') }}{% if active_account == 'family' %}?account=family{% endif %}" 
+                   class="btn btn-primary btn-sm">
+                    <i class="bi bi-plus-circle"></i> Criar Orçamento
+                </a>
             </div>
         </div>
         {% endif %}
@@ -267,6 +434,34 @@
                 <div id="family-stats">
                     <div class="text-center">
                         <div class="loading"></div>
+                        <small class="text-muted mt-2">Carregando estatísticas...</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Dicas de Economia (se conta individual sem família) -->
+        {% if active_account == 'individual' and not user_families %}
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-lightbulb"></i> Dica do Dia</h6>
+            </div>
+            <div class="card-body">
+                <div class="text-center">
+                    <i class="bi bi-people display-4 text-info"></i>
+                    <h6 class="mt-2">Experimente as Famílias!</h6>
+                    <p class="small text-muted">
+                        Gerencie finanças compartilhadas com sua família. 
+                        Acompanhem juntos os gastos e orçamentos.
+                    </p>
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('family.create_family') }}" class="btn btn-outline-primary btn-sm">
+                            <i class="bi bi-plus-circle"></i> Criar Família
+                        </a>
+                        <a href="{{ url_for('family.join') }}" class="btn btn-outline-secondary btn-sm">
+                            <i class="bi bi-box-arrow-in-right"></i> Entrar em Família
+                        </a>
                     </div>
                 </div>
             </div>
@@ -279,8 +474,39 @@
 <div class="row mt-4">
     <div class="col-12">
         <div class="chart-container">
-            <div class="chart-title">Receitas vs Despesas (Últimos 6 meses)</div>
-            <div id="chart-income-vs-expenses" style="height: 300px;"></div>
+            <div class="chart-title">
+                <i class="bi bi-bar-chart"></i> Receitas vs Despesas 
+                <small class="text-muted ms-2">(Últimos 6 meses)</small>
+            </div>
+            <div id="chart-income-vs-expenses" style="height: 300px;">
+                {% if not charts_data.income_vs_expenses %}
+                <div class="d-flex align-items-center justify-content-center h-100">
+                    <div class="text-center text-muted">
+                        <i class="bi bi-bar-chart display-4"></i>
+                        <p class="mt-2">Gráfico não disponível</p>
+                        <small>Adicione receitas e despesas para comparar</small>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast de Boas-vindas (apenas na primeira visita) -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3">
+    <div id="welcomeToast" class="toast" role="alert" data-bs-delay="5000">
+        <div class="toast-header">
+            <i class="bi bi-star-fill text-warning me-2"></i>
+            <strong class="me-auto">Bem-vindo!</strong>
+            <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+        </div>
+        <div class="toast-body">
+            {% if active_account == 'family' %}
+            🎉 Você está na conta da família! Use os botões no header para gerenciar membros e configurações.
+            {% else %}
+            💡 Dica: Crie uma família para compartilhar finanças com seus familiares!
+            {% endif %}
         </div>
     </div>
 </div>
@@ -296,20 +522,44 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Gráfico de evolução mensal
     {% if charts_data.monthly_evolution %}
-    const monthlyData = {{ charts_data.monthly_evolution|safe }};
-    Plotly.newPlot('chart-monthly-evolution', monthlyData.data, monthlyData.layout, {responsive: true, displayModeBar: false});
+    try {
+        const monthlyData = {{ charts_data.monthly_evolution|safe }};
+        Plotly.newPlot('chart-monthly-evolution', monthlyData.data, monthlyData.layout, {
+            responsive: true, 
+            displayModeBar: false,
+            locale: 'pt-BR'
+        });
+    } catch (error) {
+        console.error('Erro ao carregar gráfico mensal:', error);
+    }
     {% endif %}
     
     // Gráfico de gastos por categoria
     {% if charts_data.expenses_pie %}
-    const expensesData = {{ charts_data.expenses_pie|safe }};
-    Plotly.newPlot('chart-expenses-by-category', expensesData.data, expensesData.layout, {responsive: true, displayModeBar: false});
+    try {
+        const expensesData = {{ charts_data.expenses_pie|safe }};
+        Plotly.newPlot('chart-expenses-by-category', expensesData.data, expensesData.layout, {
+            responsive: true, 
+            displayModeBar: false,
+            locale: 'pt-BR'
+        });
+    } catch (error) {
+        console.error('Erro ao carregar gráfico de categorias:', error);
+    }
     {% endif %}
     
     // Gráfico receitas vs despesas
     {% if charts_data.income_vs_expenses %}
-    const incomeExpenseData = {{ charts_data.income_vs_expenses|safe }};
-    Plotly.newPlot('chart-income-vs-expenses', incomeExpenseData.data, incomeExpenseData.layout, {responsive: true, displayModeBar: false});
+    try {
+        const incomeExpenseData = {{ charts_data.income_vs_expenses|safe }};
+        Plotly.newPlot('chart-income-vs-expenses', incomeExpenseData.data, incomeExpenseData.layout, {
+            responsive: true, 
+            displayModeBar: false,
+            locale: 'pt-BR'
+        });
+    } catch (error) {
+        console.error('Erro ao carregar gráfico comparativo:', error);
+    }
     {% endif %}
     
     // Carregar estatísticas da família
@@ -317,28 +567,36 @@ document.addEventListener('DOMContentLoaded', function() {
     loadFamilyStats('{{ active_family_id }}');
     {% endif %}
     
-    // Auto-refresh a cada 5 minutos
+    // Mostrar toast de boas-vindas (apenas uma vez por sessão)
+    if (!sessionStorage.getItem('welcomeToastShown')) {
+        const welcomeToast = new bootstrap.Toast(document.getElementById('welcomeToast'));
+        welcomeToast.show();
+        sessionStorage.setItem('welcomeToastShown', 'true');
+    }
+    
+    // Auto-refresh a cada 5 minutos (apenas os cards de resumo)
     setInterval(function() {
-        FinanceDash.Dashboard.loadData(accountType);
+        refreshSummaryCards(accountType);
     }, 300000);
 });
 
 {% if active_account == 'family' and active_family_id %}
 async function loadFamilyStats(familyId) {
     try {
-        const stats = await FinanceDash.API.get(`/family/api/stats/${familyId}`);
+        const response = await fetch(`/family/api/stats/${familyId}`);
+        const stats = await response.json();
         
         const html = `
             <div class="row text-center">
                 <div class="col-6">
                     <div class="stat-item">
-                        <div class="h4 mb-0 text-primary">${stats.member_count}</div>
+                        <div class="h4 mb-0 text-primary">${stats.member_count || 0}</div>
                         <small class="text-muted">Membros</small>
                     </div>
                 </div>
                 <div class="col-6">
                     <div class="stat-item">
-                        <div class="h4 mb-0 text-info">${stats.transaction_count}</div>
+                        <div class="h4 mb-0 text-info">${stats.transaction_count || 0}</div>
                         <small class="text-muted">Transações</small>
                     </div>
                 </div>
@@ -351,13 +609,68 @@ async function loadFamilyStats(familyId) {
                     <div class="text-danger">${FinanceDash.Utils.formatCurrency(stats.top_spender.amount)}</div>
                 </div>
             ` : ''}
+            <div class="text-center mt-3">
+                <a href="{{ url_for('family.manage', family_id=active_family_id) }}" 
+                   class="btn btn-outline-primary btn-sm">
+                    <i class="bi bi-eye"></i> Ver Detalhes
+                </a>
+            </div>
         `;
         
         document.getElementById('family-stats').innerHTML = html;
     } catch (error) {
-        document.getElementById('family-stats').innerHTML = '<p class="text-muted text-center">Erro ao carregar estatísticas</p>';
+        console.error('Erro ao carregar estatísticas da família:', error);
+        document.getElementById('family-stats').innerHTML = `
+            <div class="text-center text-muted">
+                <i class="bi bi-exclamation-triangle"></i>
+                <p class="mt-2 mb-0">Erro ao carregar estatísticas</p>
+                <button class="btn btn-sm btn-outline-secondary mt-2" onclick="loadFamilyStats('${familyId}')">
+                    <i class="bi bi-arrow-clockwise"></i> Tentar novamente
+                </button>
+            </div>
+        `;
     }
 }
 {% endif %}
+
+async function refreshSummaryCards(accountType) {
+    try {
+        const response = await fetch(`/dashboard/api/summary?account=${accountType}`);
+        const data = await response.json();
+        
+        // Atualizar cards
+        if (data.income !== undefined) {
+            document.getElementById('total-income').textContent = FinanceDash.Utils.formatCurrency(data.income);
+        }
+        if (data.expense !== undefined) {
+            document.getElementById('total-expense').textContent = FinanceDash.Utils.formatCurrency(data.expense);
+        }
+        if (data.balance !== undefined) {
+            document.getElementById('balance').textContent = FinanceDash.Utils.formatCurrency(data.balance);
+            
+            // Atualizar classe do card de saldo
+            const balanceCard = document.getElementById('balance').closest('.card');
+            if (balanceCard) {
+                balanceCard.className = balanceCard.className.replace(/stats-card\s\w+/, 'stats-card');
+                if (data.balance > 0) {
+                    balanceCard.classList.add('income');
+                } else if (data.balance < 0) {
+                    balanceCard.classList.add('expense');
+                } else {
+                    balanceCard.classList.add('balance');
+                }
+            }
+        }
+        
+        console.log('📊 Cards de resumo atualizados');
+    } catch (error) {
+        console.error('Erro ao atualizar resumo:', error);
+    }
+}
+
+// Função para atualizar gráficos manualmente
+function refreshCharts() {
+    window.location.reload();
+}
 </script>
 {% endblock %}

@@ -1,0 +1,531 @@
+{% extends "base.html" %}
+
+{% block title %}Convidar Membro - {{ family.name }} - {{ super() }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .invite-card {
+        border: 2px dashed #dee2e6;
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+    
+    .invite-card:hover {
+        border-color: var(--bs-primary);
+        background-color: rgba(13, 110, 253, 0.05);
+    }
+    
+    .permission-item {
+        padding: 0.5rem;
+        border: 1px solid #dee2e6;
+        border-radius: 0.375rem;
+        margin-bottom: 0.5rem;
+        transition: all 0.3s ease;
+    }
+    
+    .permission-item.selected {
+        border-color: var(--bs-primary);
+        background-color: rgba(13, 110, 253, 0.1);
+    }
+    
+    .role-card {
+        cursor: pointer;
+        transition: all 0.3s ease;
+        border: 2px solid transparent;
+    }
+    
+    .role-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    }
+    
+    .role-card.selected {
+        border-color: var(--bs-primary);
+        background-color: rgba(13, 110, 253, 0.05);
+    }
+    
+    .invite-preview {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 1rem;
+        padding: 2rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <!-- Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2><i class="bi bi-person-plus"></i> Convidar Membro</h2>
+                <p class="text-muted mb-0">Adicionar novo membro à família: <strong>{{ family.name }}</strong></p>
+            </div>
+            <a href="{{ url_for('family.manage', family_id=family._id) }}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Voltar
+            </a>
+        </div>
+
+        <div class="row">
+            <!-- Formulário de Convite -->
+            <div class="col-lg-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-envelope"></i> Dados do Convite</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="inviteForm">
+                            <!-- Email -->
+                            <div class="mb-4">
+                                <label for="email" class="form-label">Email do Convidado *</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                                    <input type="email" class="form-control" id="email" name="email" 
+                                           placeholder="exemplo@email.com" required>
+                                </div>
+                                <div class="form-text">
+                                    O convidado deve ter uma conta no sistema ou criar uma nova
+                                </div>
+                            </div>
+
+                            <!-- Seleção de Papel -->
+                            <div class="mb-4">
+                                <label class="form-label">Papel na Família *</label>
+                                <div class="row">
+                                    <!-- Admin -->
+                                    <div class="col-md-4 mb-3">
+                                        <div class="role-card card h-100" data-role="admin">
+                                            <div class="card-body text-center">
+                                                <i class="bi bi-star display-4 text-danger mb-2"></i>
+                                                <h6 class="card-title">Administrador</h6>
+                                                <p class="card-text small text-muted">
+                                                    Controle total da família, pode gerenciar membros e configurações
+                                                </p>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="radio" name="role" 
+                                                           id="roleAdmin" value="admin">
+                                                    <label class="form-check-label" for="roleAdmin">
+                                                        Selecionar
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Member -->
+                                    <div class="col-md-4 mb-3">
+                                        <div class="role-card card h-100" data-role="member">
+                                            <div class="card-body text-center">
+                                                <i class="bi bi-person display-4 text-primary mb-2"></i>
+                                                <h6 class="card-title">Membro</h6>
+                                                <p class="card-text small text-muted">
+                                                    Pode adicionar transações e ver relatórios da família
+                                                </p>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="radio" name="role" 
+                                                           id="roleMember" value="member" checked>
+                                                    <label class="form-check-label" for="roleMember">
+                                                        Selecionar
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Viewer -->
+                                    <div class="col-md-4 mb-3">
+                                        <div class="role-card card h-100" data-role="viewer">
+                                            <div class="card-body text-center">
+                                                <i class="bi bi-eye display-4 text-secondary mb-2"></i>
+                                                <h6 class="card-title">Visualizador</h6>
+                                                <p class="card-text small text-muted">
+                                                    Apenas visualizar dashboard e relatórios, sem editar
+                                                </p>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="radio" name="role" 
+                                                           id="roleViewer" value="viewer">
+                                                    <label class="form-check-label" for="roleViewer">
+                                                        Selecionar
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Permissões Detalhadas -->
+                            <div class="mb-4" id="permissionsSection">
+                                <label class="form-label">Permissões Específicas</label>
+                                <div class="row" id="permissionsList">
+                                    <!-- Será preenchido via JavaScript -->
+                                </div>
+                            </div>
+
+                            <!-- Mensagem Personalizada -->
+                            <div class="mb-4">
+                                <label for="message" class="form-label">Mensagem Personalizada (opcional)</label>
+                                <textarea class="form-control" id="message" name="message" rows="3"
+                                          placeholder="Adicione uma mensagem pessoal ao convite..."></textarea>
+                            </div>
+
+                            <!-- Validade do Convite -->
+                            <div class="mb-4">
+                                <label for="expires" class="form-label">Validade do Convite</label>
+                                <select class="form-select" id="expires" name="expires">
+                                    <option value="1">1 dia</option>
+                                    <option value="3">3 dias</option>
+                                    <option value="7" selected>7 dias (recomendado)</option>
+                                    <option value="15">15 dias</option>
+                                    <option value="30">30 dias</option>
+                                </select>
+                            </div>
+
+                            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                <button type="button" class="btn btn-outline-secondary" onclick="previewInvite()">
+                                    <i class="bi bi-eye"></i> Visualizar
+                                </button>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-send"></i> Enviar Convite
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Preview e Informações -->
+            <div class="col-lg-4">
+                <!-- Preview do Convite -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h6 class="mb-0"><i class="bi bi-eye"></i> Preview do Convite</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="invite-preview text-center">
+                            <i class="bi bi-people display-4 mb-3"></i>
+                            <h5>Convite para {{ family.name }}</h5>
+                            <p class="mb-0">Você foi convidado por {{ user.name }}</p>
+                            <div class="mt-3">
+                                <span class="badge bg-light text-dark" id="previewRole">Membro</span>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <small class="text-muted">
+                                <i class="bi bi-info-circle"></i>
+                                O convidado receberá um email com código de acesso
+                            </small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Convites Pendentes -->
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="mb-0"><i class="bi bi-clock"></i> Convites Pendentes</h6>
+                    </div>
+                    <div class="card-body">
+                        <div id="pendingInvites">
+                            <div class="text-center">
+                                <div class="spinner-border spinner-border-sm" role="status"></div>
+                                <p class="mt-2 mb-0 small">Carregando...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Confirmação -->
+<div class="modal fade" id="confirmModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirmar Convite</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i>
+                    Confirme os dados do convite antes de enviar:
+                </div>
+                <table class="table table-sm">
+                    <tr>
+                        <td><strong>Email:</strong></td>
+                        <td id="confirmEmail">-</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Papel:</strong></td>
+                        <td id="confirmRole">-</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Família:</strong></td>
+                        <td>{{ family.name }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Validade:</strong></td>
+                        <td id="confirmExpires">-</td>
+                    </tr>
+                </table>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="sendInvite()">
+                    <i class="bi bi-send"></i> Confirmar e Enviar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const permissions = {
+    admin: ['add_transactions', 'edit_transactions', 'delete_transactions', 'edit_budgets', 'view_investments', 'manage_members'],
+    member: ['add_transactions', 'edit_own_transactions', 'view_all'],
+    viewer: ['view_dashboard', 'view_reports']
+};
+
+const permissionLabels = {
+    'add_transactions': 'Adicionar transações',
+    'edit_transactions': 'Editar todas as transações',
+    'edit_own_transactions': 'Editar próprias transações',
+    'delete_transactions': 'Excluir transações',
+    'edit_budgets': 'Gerenciar orçamentos',
+    'view_investments': 'Ver investimentos',
+    'manage_members': 'Gerenciar membros',
+    'view_dashboard': 'Ver dashboard',
+    'view_reports': 'Ver relatórios',
+    'view_all': 'Ver todos os dados'
+};
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Event listeners para seleção de papel
+    document.querySelectorAll('.role-card').forEach(card => {
+        card.addEventListener('click', function() {
+            const role = this.getAttribute('data-role');
+            const radio = this.querySelector('input[type="radio"]');
+            radio.checked = true;
+            
+            // Atualizar visual
+            document.querySelectorAll('.role-card').forEach(c => c.classList.remove('selected'));
+            this.classList.add('selected');
+            
+            // Atualizar permissões
+            updatePermissions(role);
+            updatePreview(role);
+        });
+    });
+    
+    // Inicializar com papel padrão
+    updatePermissions('member');
+    updatePreview('member');
+    
+    // Carregar convites pendentes
+    loadPendingInvites();
+    
+    // Event listener do formulário
+    document.getElementById('inviteForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        showConfirmation();
+    });
+});
+
+function updatePermissions(role) {
+    const permissionsList = document.getElementById('permissionsList');
+    const rolePermissions = permissions[role] || [];
+    
+    let html = '';
+    Object.entries(permissionLabels).forEach(([key, label]) => {
+        const isSelected = rolePermissions.includes(key);
+        html += `
+            <div class="col-md-6 mb-2">
+                <div class="permission-item ${isSelected ? 'selected' : ''}">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" 
+                               id="perm_${key}" name="permissions" value="${key}"
+                               ${isSelected ? 'checked' : ''}>
+                        <label class="form-check-label small" for="perm_${key}">
+                            ${label}
+                        </label>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    permissionsList.innerHTML = html;
+}
+
+function updatePreview(role) {
+    const roleLabels = {
+        admin: 'Administrador',
+        member: 'Membro',
+        viewer: 'Visualizador'
+    };
+    
+    document.getElementById('previewRole').textContent = roleLabels[role] || 'Membro';
+}
+
+function showConfirmation() {
+    const email = document.getElementById('email').value;
+    const role = document.querySelector('input[name="role"]:checked').value;
+    const expires = document.getElementById('expires').value;
+    
+    document.getElementById('confirmEmail').textContent = email;
+    document.getElementById('confirmRole').textContent = getRoleLabel(role);
+    document.getElementById('confirmExpires').textContent = `${expires} dia(s)`;
+    
+    const modal = new bootstrap.Modal(document.getElementById('confirmModal'));
+    modal.show();
+}
+
+function getRoleLabel(role) {
+    const labels = {
+        admin: 'Administrador',
+        member: 'Membro',
+        viewer: 'Visualizador'
+    };
+    return labels[role] || 'Membro';
+}
+
+async function sendInvite() {
+    const formData = new FormData(document.getElementById('inviteForm'));
+    
+    // Adicionar permissões selecionadas
+    const selectedPermissions = Array.from(
+        document.querySelectorAll('input[name="permissions"]:checked')
+    ).map(input => input.value);
+    
+    const data = {
+        family_id: '{{ family._id }}',
+        email: formData.get('email'),
+        role: formData.get('role'),
+        message: formData.get('message'),
+        expires: parseInt(formData.get('expires')),
+        permissions: selectedPermissions
+    };
+    
+    try {
+        // Mostrar loading
+        const submitBtn = document.querySelector('#confirmModal .btn-primary');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Enviando...';
+        submitBtn.disabled = true;
+        
+        const response = await fetch('/family/invite', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            FinanceDash.Notifications.success(`Convite enviado para ${data.email}!`);
+            
+            // Fechar modal
+            bootstrap.Modal.getInstance(document.getElementById('confirmModal')).hide();
+            
+            // Limpar formulário
+            document.getElementById('inviteForm').reset();
+            
+            // Recarregar convites pendentes
+            loadPendingInvites();
+            
+            // Mostrar código de convite
+            if (result.invite_code) {
+                showInviteCode(result.invite_code, data.email);
+            }
+        } else {
+            FinanceDash.Notifications.error(result.error || 'Erro ao enviar convite');
+        }
+        
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+        
+    } catch (error) {
+        FinanceDash.Notifications.error('Erro ao enviar convite');
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+    }
+}
+
+function showInviteCode(code, email) {
+    const alert = document.createElement('div');
+    alert.className = 'alert alert-success alert-dismissible fade show';
+    alert.innerHTML = `
+        <i class="bi bi-check-circle"></i>
+        <strong>Convite enviado!</strong><br>
+        Email: ${email}<br>
+        Código: <code>${code}</code><br>
+        <small>O convidado pode usar este código para entrar na família</small>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.querySelector('.card-body').insertBefore(alert, document.getElementById('inviteForm'));
+}
+
+async function loadPendingInvites() {
+    try {
+        const response = await fetch('/family/api/invites/{{ family._id }}');
+        const invites = await response.json();
+        
+        const container = document.getElementById('pendingInvites');
+        
+        if (invites.length === 0) {
+            container.innerHTML = '<p class="text-muted small mb-0">Nenhum convite pendente</p>';
+        } else {
+            let html = '';
+            invites.forEach(invite => {
+                const expiresDate = new Date(invite.expires_at).toLocaleDateString('pt-BR');
+                html += `
+                    <div class="border-bottom pb-2 mb-2">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <small class="fw-bold">${invite.email}</small><br>
+                                <small class="text-muted">${getRoleLabel(invite.role)}</small>
+                            </div>
+                            <small class="text-muted">${expiresDate}</small>
+                        </div>
+                        <div class="mt-1">
+                            <code class="small">${invite.code}</code>
+                        </div>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+    } catch (error) {
+        document.getElementById('pendingInvites').innerHTML = 
+            '<p class="text-danger small mb-0">Erro ao carregar</p>';
+    }
+}
+
+function previewInvite() {
+    const email = document.getElementById('email').value;
+    const role = document.querySelector('input[name="role"]:checked')?.value || 'member';
+    const message = document.getElementById('message').value;
+    
+    if (!email) {
+        FinanceDash.Notifications.warning('Digite um email para visualizar o convite');
+        return;
+    }
+    
+    // Atualizar preview
+    updatePreview(role);
+    
+    // Scroll para o preview
+    document.querySelector('.invite-preview').scrollIntoView({ 
+        behavior: 'smooth', 
+        block: 'center' 
+    });
+    
+    FinanceDash.Notifications.info('Preview atualizado');
+}
+</script>
+{% endblock %}

@@ -1,0 +1,285 @@
+{% extends "base.html" %}
+
+{% block title %}Editar Transação - {{ super() }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">
+                    <i class="bi bi-pencil-square"></i> Editar Transação
+                </h4>
+                <small class="text-muted">ID: {{ transaction._id }}</small>
+            </div>
+            <div class="card-body">
+                <form method="POST" id="editTransactionForm">
+                    <!-- Tipo de Transação -->
+                    <div class="mb-3">
+                        <label class="form-label">Tipo de Transação *</label>
+                        <div class="btn-group w-100" role="group">
+                            <input type="radio" class="btn-check" name="type" id="income" value="income" 
+                                   {% if transaction.type == 'income' %}checked{% endif %}>
+                            <label class="btn btn-outline-success" for="income">
+                                <i class="bi bi-arrow-up-circle"></i> Receita
+                            </label>
+                            
+                            <input type="radio" class="btn-check" name="type" id="expense" value="expense"
+                                   {% if transaction.type == 'expense' %}checked{% endif %}>
+                            <label class="btn btn-outline-danger" for="expense">
+                                <i class="bi bi-arrow-down-circle"></i> Despesa
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- Valor -->
+                    <div class="mb-3">
+                        <label for="amount" class="form-label">Valor *</label>
+                        <div class="input-group">
+                            <span class="input-group-text">R$</span>
+                            <input type="number" class="form-control" id="amount" name="amount" 
+                                   step="0.01" min="0.01" value="{{ transaction.amount }}" required>
+                        </div>
+                    </div>
+                    
+                    <!-- Categoria -->
+                    <div class="mb-3">
+                        <label for="category" class="form-label">Categoria *</label>
+                        <div class="input-group">
+                            <select class="form-select" id="category" name="category" required>
+                                <option value="">Selecione uma categoria</option>
+                                {% for cat in categories %}
+                                <option value="{{ cat }}" {% if cat == transaction.category %}selected{% endif %}>
+                                    {{ cat }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <button class="btn btn-outline-secondary" type="button" 
+                                    data-bs-toggle="modal" data-bs-target="#newCategoryModal">
+                                <i class="bi bi-plus"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Descrição -->
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Descrição</label>
+                        <input type="text" class="form-control" id="description" name="description" 
+                               value="{{ transaction.description or '' }}"
+                               placeholder="Descrição da transação">
+                    </div>
+                    
+                    <!-- Data -->
+                    <div class="mb-3">
+                        <label for="date" class="form-label">Data *</label>
+                        <input type="date" class="form-control" id="date" name="date" 
+                               value="{{ transaction.date.strftime('%Y-%m-%d') if transaction.date else '' }}" required>
+                    </div>
+                    
+                    <!-- Método de Pagamento -->
+                    <div class="mb-3">
+                        <label for="payment_method" class="form-label">Método de Pagamento</label>
+                        <select class="form-select" id="payment_method" name="payment_method">
+                            <option value="">Selecione (opcional)</option>
+                            <option value="dinheiro" {% if transaction.payment_method == 'dinheiro' %}selected{% endif %}>Dinheiro</option>
+                            <option value="cartao_debito" {% if transaction.payment_method == 'cartao_debito' %}selected{% endif %}>Cartão de Débito</option>
+                            <option value="cartao_credito" {% if transaction.payment_method == 'cartao_credito' %}selected{% endif %}>Cartão de Crédito</option>
+                            <option value="pix" {% if transaction.payment_method == 'pix' %}selected{% endif %}>PIX</option>
+                            <option value="transferencia" {% if transaction.payment_method == 'transferencia' %}selected{% endif %}>Transferência</option>
+                            <option value="boleto" {% if transaction.payment_method == 'boleto' %}selected{% endif %}>Boleto</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Tags -->
+                    <div class="mb-3">
+                        <label for="tags" class="form-label">Tags</label>
+                        <input type="text" class="form-control" id="tags" name="tags" 
+                               value="{{ transaction.tags|join(', ') if transaction.tags else '' }}"
+                               placeholder="Ex: urgente, importante, recorrente">
+                        <div class="form-text">Separe as tags por vírgula</div>
+                    </div>
+
+                    <!-- Transação Recorrente -->
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="recurring" name="recurring"
+                                   {% if transaction.recurring %}checked{% endif %}>
+                            <label class="form-check-label" for="recurring">
+                                <i class="bi bi-arrow-repeat"></i> Transação recorrente
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Informações Adicionais -->
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i>
+                        <strong>Criada em:</strong> {{ format_date(transaction.date) }}<br>
+                        {% if transaction.added_by %}
+                        <strong>Adicionada por:</strong> {{ user.name if transaction.added_by == user._id else 'Outro membro' }}
+                        {% endif %}
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('dashboard.transactions') }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left"></i> Cancelar
+                        </a>
+                        <button type="button" class="btn btn-outline-danger" onclick="deleteTransaction()">
+                            <i class="bi bi-trash"></i> Excluir
+                        </button>
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-check-circle"></i> Salvar Alterações
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Nova Categoria -->
+<div class="modal fade" id="newCategoryModal" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Nova Categoria</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="newCategoryName" class="form-label">Nome da Categoria</label>
+                    <input type="text" class="form-control" id="newCategoryName" 
+                           placeholder="Ex: Novo tipo de gasto">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="addNewCategory()">Adicionar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Formatação do valor
+document.getElementById('amount').addEventListener('input', function(e) {
+    let value = e.target.value;
+    e.target.value = value.replace(/[^0-9.]/g, '');
+});
+
+// Submissão do formulário
+document.getElementById('editTransactionForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const data = Object.fromEntries(formData.entries());
+    
+    // Validações
+    const amount = parseFloat(data.amount);
+    if (!amount || amount <= 0) {
+        FinanceDash.Notifications.error('Valor deve ser maior que zero');
+        return;
+    }
+    
+    if (!data.category) {
+        FinanceDash.Notifications.error('Categoria é obrigatória');
+        return;
+    }
+    
+    try {
+        // Mostrar loading
+        const submitBtn = this.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Salvando...';
+        submitBtn.disabled = true;
+        
+        const response = await fetch(window.location.href, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            FinanceDash.Notifications.success('Transação atualizada com sucesso!');
+            setTimeout(() => {
+                window.location.href = '{{ url_for("dashboard.transactions") }}';
+            }, 1000);
+        } else {
+            FinanceDash.Notifications.error(result.error || 'Erro ao atualizar transação');
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+        }
+    } catch (error) {
+        FinanceDash.Notifications.error('Erro ao atualizar transação');
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+    }
+});
+
+// Adicionar nova categoria
+function addNewCategory() {
+    const categoryName = document.getElementById('newCategoryName').value.trim();
+    
+    if (!categoryName) {
+        alert('Nome da categoria é obrigatório');
+        return;
+    }
+    
+    // Adicionar à lista
+    const categorySelect = document.getElementById('category');
+    const newOption = document.createElement('option');
+    newOption.value = categoryName;
+    newOption.textContent = categoryName;
+    newOption.selected = true;
+    
+    categorySelect.appendChild(newOption);
+    
+    // Fechar modal
+    const modal = bootstrap.Modal.getInstance(document.getElementById('newCategoryModal'));
+    modal.hide();
+    
+    // Limpar campo
+    document.getElementById('newCategoryName').value = '';
+    
+    FinanceDash.Notifications.success('Categoria adicionada!');
+}
+
+// Deletar transação
+async function deleteTransaction() {
+    if (!confirm('Tem certeza que deseja excluir esta transação? Esta ação não pode ser desfeita.')) {
+        return;
+    }
+    
+    try {
+        const transactionId = '{{ transaction._id }}';
+        const response = await fetch(`/transactions/delete/${transactionId}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            FinanceDash.Notifications.success('Transação excluída com sucesso!');
+            setTimeout(() => {
+                window.location.href = '{{ url_for("dashboard.transactions") }}';
+            }, 1000);
+        } else {
+            FinanceDash.Notifications.error(result.error || 'Erro ao excluir transação');
+        }
+    } catch (error) {
+        FinanceDash.Notifications.error('Erro ao excluir transação');
+    }
+}
+
+// Autocompletar tags
+document.getElementById('tags').addEventListener('input', function(e) {
+    // TODO: Implementar autocompletar de tags baseado em tags usadas anteriormente
+});
+</script>
+{% endblock %}

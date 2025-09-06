@@ -1,0 +1,624 @@
+{% extends "base.html" %}
+
+{% block title %}{{ family.name }} - Gerenciar Família - {{ super() }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .member-card {
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+    
+    .member-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    }
+    
+    .member-avatar {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: bold;
+        font-size: 1.5rem;
+    }
+    
+    .member-role {
+        padding: 0.25rem 0.5rem;
+        border-radius: 1rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .member-role.admin {
+        background-color: rgba(220, 53, 69, 0.1);
+        color: #dc3545;
+        border: 1px solid rgba(220, 53, 69, 0.2);
+    }
+    
+    .member-role.member {
+        background-color: rgba(13, 110, 253, 0.1);
+        color: #0d6efd;
+        border: 1px solid rgba(13, 110, 253, 0.2);
+    }
+    
+    .member-role.viewer {
+        background-color: rgba(108, 117, 125, 0.1);
+        color: #6c757d;
+        border: 1px solid rgba(108, 117, 125, 0.2);
+    }
+    
+    .stats-card {
+        border: none;
+        border-radius: 1rem;
+        transition: all 0.3s ease;
+    }
+    
+    .stats-card:hover {
+        transform: translateY(-2px);
+    }
+    
+    .family-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 1rem;
+        padding: 2rem;
+        margin-bottom: 2rem;
+    }
+    
+    .activity-item {
+        border-left: 3px solid #dee2e6;
+        padding-left: 1rem;
+        margin-bottom: 1rem;
+        transition: all 0.3s ease;
+    }
+    
+    .activity-item:hover {
+        border-left-color: var(--bs-primary);
+        background-color: rgba(13, 110, 253, 0.05);
+    }
+    
+    .invite-code {
+        font-family: 'Courier New', monospace;
+        letter-spacing: 2px;
+        background-color: #f8f9fa;
+        padding: 0.5rem 1rem;
+        border-radius: 0.5rem;
+        border: 1px dashed #dee2e6;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Header da Família -->
+<div class="family-header">
+    <div class="d-flex justify-content-between align-items-start">
+        <div>
+            <h1 class="display-6 mb-2">
+                <i class="bi bi-people"></i> {{ family.name }}
+            </h1>
+            <p class="lead mb-3">{{ family.description or 'Família financeira colaborativa' }}</p>
+            <div class="d-flex align-items-center">
+                <span class="badge bg-light text-dark me-2">
+                    <i class="bi bi-calendar"></i> Criada em {{ format_date(family.created_at) }}
+                </span>
+                <span class="badge bg-light text-dark">
+                    <i class="bi bi-people"></i> {{ members|length }} membro{{ 's' if members|length != 1 else '' }}
+                </span>
+            </div>
+        </div>
+        <div class="text-end">
+            {% if is_admin %}
+            <div class="btn-group">
+                <a href="{{ url_for('family.invite', family_id=family._id) }}" class="btn btn-light">
+                    <i class="bi bi-person-plus"></i> Convidar
+                </a>
+                <button type="button" class="btn btn-light dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown">
+                    <span class="visually-hidden">Mais opções</span>
+                </button>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="{{ url_for('family.family_settings', family_id=family._id) }}">
+                        <i class="bi bi-gear"></i> Configurações
+                    </a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item text-danger" href="#" onclick="leaveFamily()">
+                        <i class="bi bi-box-arrow-left"></i> Sair da Família
+                    </a></li>
+                </ul>
+            </div>
+            {% else %}
+            <button class="btn btn-outline-light" onclick="leaveFamily()">
+                <i class="bi bi-box-arrow-left"></i> Sair da Família
+            </button>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Estatísticas da Família -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card stats-card bg-primary text-white">
+            <div class="card-body text-center">
+                <i class="bi bi-people display-4 mb-2 opacity-75"></i>
+                <h3 class="mb-0">{{ members|length }}</h3>
+                <p class="mb-0">Membros</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stats-card bg-info text-white">
+            <div class="card-body text-center">
+                <i class="bi bi-list-ul display-4 mb-2 opacity-75"></i>
+                <h3 class="mb-0" id="transactionCount">-</h3>
+                <p class="mb-0">Transações</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stats-card bg-success text-white">
+            <div class="card-body text-center">
+                <i class="bi bi-arrow-up-circle display-4 mb-2 opacity-75"></i>
+                <h3 class="mb-0" id="totalIncome">-</h3>
+                <p class="mb-0">Receitas do Mês</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stats-card bg-danger text-white">
+            <div class="card-body text-center">
+                <i class="bi bi-arrow-down-circle display-4 mb-2 opacity-75"></i>
+                <h3 class="mb-0" id="totalExpense">-</h3>
+                <p class="mb-0">Despesas do Mês</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Membros da Família -->
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-people"></i> Membros da Família</h5>
+                {% if is_admin %}
+                <a href="{{ url_for('family.invite', family_id=family._id) }}" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-person-plus"></i> Convidar Novo Membro
+                </a>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% for member_data in members %}
+                    <div class="col-md-6 mb-3">
+                        <div class="member-card card h-100" data-member-id="{{ member_data.user._id }}">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center mb-3">
+                                    <div class="member-avatar me-3">
+                                        {{ member_data.user.name[0].upper() }}
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <h6 class="mb-1">{{ member_data.user.name }}</h6>
+                                        <small class="text-muted d-block">{{ member_data.user.email }}</small>
+                                        <span class="member-role {{ member_data.role }}">
+                                            {% if member_data.role == 'admin' %}
+                                                <i class="bi bi-star"></i> Administrador
+                                            {% elif member_data.role == 'member' %}
+                                                <i class="bi bi-person"></i> Membro
+                                            {% else %}
+                                                <i class="bi bi-eye"></i> Visualizador
+                                            {% endif %}
+                                        </span>
+                                    </div>
+                                    {% if is_admin and member_data.user._id != user._id %}
+                                    <div class="dropdown">
+                                        <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="dropdown">
+                                            <i class="bi bi-three-dots-vertical"></i>
+                                        </button>
+                                        <ul class="dropdown-menu">
+                                            <li><h6 class="dropdown-header">Alterar Papel</h6></li>
+                                            <li><a class="dropdown-item" href="#" 
+                                                   onclick="changeRole('{{ member_data.user._id }}', 'admin')">
+                                                <i class="bi bi-star"></i> Administrador
+                                            </a></li>
+                                            <li><a class="dropdown-item" href="#" 
+                                                   onclick="changeRole('{{ member_data.user._id }}', 'member')">
+                                                <i class="bi bi-person"></i> Membro
+                                            </a></li>
+                                            <li><a class="dropdown-item" href="#" 
+                                                   onclick="changeRole('{{ member_data.user._id }}', 'viewer')">
+                                                <i class="bi bi-eye"></i> Visualizador
+                                            </a></li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li><a class="dropdown-item text-danger" href="#" 
+                                                   onclick="removeMember('{{ member_data.user._id }}', '{{ member_data.user.name }}')">
+                                                <i class="bi bi-person-x"></i> Remover da Família
+                                            </a></li>
+                                        </ul>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="row text-center">
+                                    <div class="col-6">
+                                        <small class="text-muted d-block">Entrou em</small>
+                                        <strong>{{ format_date(member_data.joined_at) }}</strong>
+                                    </div>
+                                    <div class="col-6">
+                                        <small class="text-muted d-block">Permissões</small>
+                                        <strong>{{ member_data.permissions|length }}</strong>
+                                    </div>
+                                </div>
+                                
+                                <!-- Permissões -->
+                                <div class="mt-3">
+                                    <small class="text-muted">Pode:</small>
+                                    <div class="mt-1">
+                                        {% for permission in member_data.permissions[:3] %}
+                                        <span class="badge bg-light text-dark me-1">{{ permission }}</span>
+                                        {% endfor %}
+                                        {% if member_data.permissions|length > 3 %}
+                                        <span class="badge bg-secondary">+{{ member_data.permissions|length - 3 }} mais</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Sidebar com Atividades e Convites -->
+    <div class="col-lg-4">
+        <!-- Convites Pendentes -->
+        {% if is_admin %}
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-envelope"></i> Convites Pendentes</h6>
+            </div>
+            <div class="card-body">
+                <div id="pendingInvites">
+                    <div class="text-center">
+                        <div class="spinner-border spinner-border-sm text-primary" role="status">
+                            <span class="visually-hidden">Carregando...</span>
+                        </div>
+                        <p class="mt-2 mb-0 small text-muted">Carregando convites...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Atividade Recente -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-clock-history"></i> Atividade Recente</h6>
+            </div>
+            <div class="card-body">
+                <div id="recentActivity">
+                    <div class="text-center">
+                        <div class="spinner-border spinner-border-sm text-primary" role="status">
+                            <span class="visually-hidden">Carregando...</span>
+                        </div>
+                        <p class="mt-2 mb-0 small text-muted">Carregando atividades...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Ações Rápidas -->
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-lightning"></i> Ações Rápidas</h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('transactions.add_transaction') }}?account=family" class="btn btn-outline-primary">
+                        <i class="bi bi-plus-circle"></i> Nova Transação
+                    </a>
+                    <a href="{{ url_for('dashboard.budgets') }}?account=family" class="btn btn-outline-success">
+                        <i class="bi bi-piggy-bank"></i> Gerenciar Orçamentos
+                    </a>
+                    <a href="{{ url_for('dashboard.reports') }}?account=family" class="btn btn-outline-info">
+                        <i class="bi bi-graph-up"></i> Ver Relatórios
+                    </a>
+                    {% if is_admin %}
+                    <hr>
+                    <a href="{{ url_for('family.invite', family_id=family._id) }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-person-plus"></i> Convidar Membro
+                    </a>
+                    <a href="{{ url_for('family.family_settings', family_id=family._id) }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-gear"></i> Configurações
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Confirmação para Remover Membro -->
+<div class="modal fade" id="removeMemberModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Remover Membro</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    <strong>Atenção!</strong> Esta ação não pode ser desfeita.
+                </div>
+                <p>Tem certeza que deseja remover <strong id="memberToRemoveName">-</strong> da família?</p>
+                <p class="text-muted small">
+                    O membro perderá acesso a todos os dados financeiros da família e não receberá mais notificações.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="confirmRemoveBtn">
+                    <i class="bi bi-person-x"></i> Remover Membro
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let memberToRemove = null;
+
+// Carregar dados quando a página carregar
+document.addEventListener('DOMContentLoaded', function() {
+    loadFamilyStats();
+    {% if is_admin %}
+    loadPendingInvites();
+    {% endif %}
+    loadRecentActivity();
+});
+
+async function loadFamilyStats() {
+    try {
+        const response = await fetch(`/family/api/stats/{{ family._id }}`);
+        const stats = await response.json();
+        
+        document.getElementById('transactionCount').textContent = stats.transaction_count || 0;
+        document.getElementById('totalIncome').textContent = FinanceDash.Utils.formatCurrency(stats.summary.income || 0);
+        document.getElementById('totalExpense').textContent = FinanceDash.Utils.formatCurrency(stats.summary.expense || 0);
+    } catch (error) {
+        console.error('Erro ao carregar estatísticas:', error);
+    }
+}
+
+{% if is_admin %}
+async function loadPendingInvites() {
+    try {
+        const response = await fetch(`/family/api/invites/{{ family._id }}`);
+        const invites = await response.json();
+        
+        const container = document.getElementById('pendingInvites');
+        
+        if (invites.length === 0) {
+            container.innerHTML = '<p class="text-muted small mb-0">Nenhum convite pendente</p>';
+        } else {
+            let html = '';
+            invites.forEach(invite => {
+                const expiresDate = new Date(invite.expires_at).toLocaleDateString('pt-BR');
+                const roleLabel = getRoleLabel(invite.role);
+                
+                html += `
+                    <div class="border-bottom pb-2 mb-2">
+                        <div class="d-flex justify-content-between align-items-start mb-1">
+                            <div>
+                                <small class="fw-bold">${invite.email}</small><br>
+                                <span class="badge bg-secondary">${roleLabel}</span>
+                            </div>
+                            <small class="text-muted">Expira ${expiresDate}</small>
+                        </div>
+                        <div class="invite-code">
+                            ${invite.code}
+                        </div>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+    } catch (error) {
+        document.getElementById('pendingInvites').innerHTML = 
+            '<p class="text-danger small mb-0">Erro ao carregar convites</p>';
+    }
+}
+{% endif %}
+
+async function loadRecentActivity() {
+    try {
+        // Simulação de atividades recentes - implementar endpoint real
+        const activities = [
+            {
+                user: 'João Silva',
+                action: 'adicionou uma transação',
+                details: 'Supermercado - R$ 145,80',
+                time: '2 horas atrás',
+                icon: 'bi-plus-circle',
+                color: 'success'
+            },
+            {
+                user: 'Maria Santos',
+                action: 'editou um orçamento',
+                details: 'Categoria Alimentação',
+                time: '1 dia atrás',
+                icon: 'bi-piggy-bank',
+                color: 'warning'
+            },
+            {
+                user: 'Pedro Costa',
+                action: 'entrou na família',
+                details: 'Novo membro adicionado',
+                time: '3 dias atrás',
+                icon: 'bi-person-plus',
+                color: 'info'
+            }
+        ];
+        
+        const container = document.getElementById('recentActivity');
+        let html = '';
+        
+        activities.forEach(activity => {
+            html += `
+                <div class="activity-item">
+                    <div class="d-flex align-items-start">
+                        <div class="me-2">
+                            <i class="bi ${activity.icon} text-${activity.color}"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <small class="fw-bold">${activity.user}</small>
+                            <small class="text-muted"> ${activity.action}</small><br>
+                            <small class="text-muted">${activity.details}</small><br>
+                            <small class="text-muted">${activity.time}</small>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        container.innerHTML = html || '<p class="text-muted small mb-0">Nenhuma atividade recente</p>';
+        
+    } catch (error) {
+        document.getElementById('recentActivity').innerHTML = 
+            '<p class="text-danger small mb-0">Erro ao carregar atividades</p>';
+    }
+}
+
+async function changeRole(memberId, newRole) {
+    const roleLabel = getRoleLabel(newRole);
+    
+    if (!confirm(`Tem certeza que deseja alterar o papel deste membro para ${roleLabel}?`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('/family/change_role', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                family_id: '{{ family._id }}',
+                member_id: memberId,
+                role: newRole
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            FinanceDash.Notifications.success('Papel alterado com sucesso!');
+            setTimeout(() => window.location.reload(), 1000);
+        } else {
+            FinanceDash.Notifications.error(data.error || 'Erro ao alterar papel');
+        }
+    } catch (error) {
+        FinanceDash.Notifications.error('Erro ao alterar papel');
+    }
+}
+
+function removeMember(memberId, memberName) {
+    memberToRemove = memberId;
+    document.getElementById('memberToRemoveName').textContent = memberName;
+    
+    const modal = new bootstrap.Modal(document.getElementById('removeMemberModal'));
+    modal.show();
+    
+    document.getElementById('confirmRemoveBtn').onclick = async function() {
+        await executeRemoveMember();
+    };
+}
+
+async function executeRemoveMember() {
+    if (!memberToRemove) return;
+    
+    try {
+        const response = await fetch('/family/remove_member', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                family_id: '{{ family._id }}',
+                member_id: memberToRemove
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            FinanceDash.Notifications.success('Membro removido com sucesso!');
+            
+            // Remover da interface
+            const memberCard = document.querySelector(`[data-member-id="${memberToRemove}"]`);
+            if (memberCard) {
+                memberCard.closest('.col-md-6').remove();
+            }
+            
+            // Fechar modal
+            bootstrap.Modal.getInstance(document.getElementById('removeMemberModal')).hide();
+            
+            // Recarregar estatísticas
+            loadFamilyStats();
+        } else {
+            FinanceDash.Notifications.error(data.error || 'Erro ao remover membro');
+        }
+    } catch (error) {
+        FinanceDash.Notifications.error('Erro ao remover membro');
+    }
+    
+    memberToRemove = null;
+}
+
+async function leaveFamily() {
+    if (!confirm('Tem certeza que deseja sair desta família? Esta ação não pode ser desfeita.')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/family/leave/{{ family._id }}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            FinanceDash.Notifications.success('Você saiu da família');
+            setTimeout(() => {
+                window.location.href = '/dashboard/overview';
+            }, 1500);
+        } else {
+            FinanceDash.Notifications.error(data.error || 'Erro ao sair da família');
+        }
+    } catch (error) {
+        FinanceDash.Notifications.error('Erro ao sair da família');
+    }
+}
+
+function getRoleLabel(role) {
+    const labels = {
+        admin: 'Administrador',
+        member: 'Membro',
+        viewer: 'Visualizador'
+    };
+    return labels[role] || 'Membro';
+}
+</script>
+{% endblock %}

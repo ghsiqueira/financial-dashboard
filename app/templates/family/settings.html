@@ -1,0 +1,743 @@
+{% extends "base.html" %}
+
+{% block title %}Configurações - {{ family.name }} - {{ super() }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .settings-section {
+        border: 1px solid #dee2e6;
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        transition: all 0.3s ease;
+    }
+    
+    .settings-section:hover {
+        border-color: var(--bs-primary);
+        box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.1);
+    }
+    
+    .danger-zone {
+        border-color: #dc3545;
+        background-color: rgba(220, 53, 69, 0.05);
+    }
+    
+    .form-switch .form-check-input {
+        width: 3rem;
+        height: 1.5rem;
+    }
+    
+    .currency-preview {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        color: white;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        text-align: center;
+    }
+    
+    .category-tag {
+        display: inline-block;
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        padding: 0.375rem 0.75rem;
+        margin: 0.25rem;
+        border-radius: 1rem;
+        font-size: 0.875rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    .category-tag:hover {
+        background-color: #e9ecef;
+        border-color: var(--bs-primary);
+    }
+    
+    .category-tag .remove-btn {
+        margin-left: 0.5rem;
+        color: #dc3545;
+        cursor: pointer;
+    }
+    
+    .backup-info {
+        background-color: #f8f9fa;
+        border-left: 4px solid #0dcaf0;
+        padding: 1rem;
+        border-radius: 0 0.5rem 0.5rem 0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2><i class="bi bi-gear"></i> Configurações da Família</h2>
+        <p class="text-muted mb-0">{{ family.name }}</p>
+    </div>
+    <a href="{{ url_for('family.manage', family_id=family._id) }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Voltar para Família
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <!-- Informações Básicas -->
+        <div class="settings-section">
+            <h5><i class="bi bi-info-circle"></i> Informações Básicas</h5>
+            <p class="text-muted">Dados principais da família</p>
+            
+            <form id="basicInfoForm">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="familyName" class="form-label">Nome da Família *</label>
+                        <input type="text" class="form-control" id="familyName" name="name" 
+                               value="{{ family.name }}" required minlength="3">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="familyStatus" class="form-label">Status</label>
+                        <select class="form-select" id="familyStatus" name="status">
+                            <option value="active" selected>Ativa</option>
+                            <option value="inactive">Inativa</option>
+                            <option value="archived">Arquivada</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="familyDescription" class="form-label">Descrição</label>
+                    <textarea class="form-control" id="familyDescription" name="description" 
+                              rows="3" placeholder="Descrição da família...">{{ family.description or '' }}</textarea>
+                </div>
+                
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-circle"></i> Salvar Alterações
+                </button>
+            </form>
+        </div>
+
+        <!-- Configurações Financeiras -->
+        <div class="settings-section">
+            <h5><i class="bi bi-currency-dollar"></i> Configurações Financeiras</h5>
+            <p class="text-muted">Moeda, formatos e preferências financeiras</p>
+            
+            <form id="financialSettingsForm">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="currency" class="form-label">Moeda Principal</label>
+                        <select class="form-select" id="currency" name="currency">
+                            <option value="BRL" {% if family.settings.currency == 'BRL' %}selected{% endif %}>Real Brasileiro (R$)</option>
+                            <option value="USD" {% if family.settings.currency == 'USD' %}selected{% endif %}>Dólar Americano ($)</option>
+                            <option value="EUR" {% if family.settings.currency == 'EUR' %}selected{% endif %}>Euro (€)</option>
+                            <option value="GBP" {% if family.settings.currency == 'GBP' %}selected{% endif %}>Libra Esterlina (£)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Preview</label>
+                        <div class="currency-preview" id="currencyPreview">
+                            R$ 1.234,56
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="dateFormat" class="form-label">Formato de Data</label>
+                        <select class="form-select" id="dateFormat" name="date_format">
+                            <option value="dd/mm/yyyy">DD/MM/AAAA (31/12/2024)</option>
+                            <option value="mm/dd/yyyy">MM/DD/AAAA (12/31/2024)</option>
+                            <option value="yyyy-mm-dd">AAAA-MM-DD (2024-12-31)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="fiscalYear" class="form-label">Início do Ano Fiscal</label>
+                        <select class="form-select" id="fiscalYear" name="fiscal_year_start">
+                            <option value="1">Janeiro</option>
+                            <option value="4">Abril</option>
+                            <option value="7">Julho</option>
+                            <option value="10">Outubro</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-circle"></i> Salvar Configurações
+                </button>
+            </form>
+        </div>
+
+        <!-- Notificações e Alertas -->
+        <div class="settings-section">
+            <h5><i class="bi bi-bell"></i> Notificações e Alertas</h5>
+            <p class="text-muted">Configure quando e como receber notificações</p>
+            
+            <form id="notificationSettingsForm">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Alertas de Orçamento</h6>
+                        <div class="form-check form-switch mb-2">
+                            <input class="form-check-input" type="checkbox" id="budgetAlerts" name="budget_alerts" 
+                                   {% if family.settings.budget_alerts %}checked{% endif %}>
+                            <label class="form-check-label" for="budgetAlerts">
+                                Alertas quando atingir limite
+                            </label>
+                        </div>
+                        <div class="form-check form-switch mb-2">
+                            <input class="form-check-input" type="checkbox" id="budgetWarnings" name="budget_warnings" checked>
+                            <label class="form-check-label" for="budgetWarnings">
+                                Avisos aos 80% do limite
+                            </label>
+                        </div>
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="monthlyBudgetReport" name="monthly_budget_report" checked>
+                            <label class="form-check-label" for="monthlyBudgetReport">
+                                Relatório mensal de orçamentos
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <h6>Notificações da Família</h6>
+                        <div class="form-check form-switch mb-2">
+                            <input class="form-check-input" type="checkbox" id="newMemberNotif" name="new_member_notifications" checked>
+                            <label class="form-check-label" for="newMemberNotif">
+                                Novos membros
+                            </label>
+                        </div>
+                        <div class="form-check form-switch mb-2">
+                            <input class="form-check-input" type="checkbox" id="bigTransactionNotif" name="big_transaction_notifications" checked>
+                            <label class="form-check-label" for="bigTransactionNotif">
+                                Transações grandes (>R$ 500)
+                            </label>
+                        </div>
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="weeklyReportNotif" name="weekly_report_notifications">
+                            <label class="form-check-label" for="weeklyReportNotif">
+                                Relatório semanal
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-circle"></i> Salvar Notificações
+                </button>
+            </form>
+        </div>
+
+        <!-- Categorias Personalizadas -->
+        <div class="settings-section">
+            <h5><i class="bi bi-tags"></i> Categorias Personalizadas</h5>
+            <p class="text-muted">Gerencie as categorias de transações da família</p>
+            
+            <div class="mb-3">
+                <label for="newCategory" class="form-label">Adicionar Nova Categoria</label>
+                <div class="input-group">
+                    <input type="text" class="form-control" id="newCategory" placeholder="Nome da categoria">
+                    <button class="btn btn-outline-secondary" type="button" onclick="addCategory()">
+                        <i class="bi bi-plus-circle"></i> Adicionar
+                    </button>
+                </div>
+            </div>
+            
+            <div class="mb-3">
+                <label class="form-label">Categorias Atuais</label>
+                <div id="categoriesList">
+                    <!-- Categorias padrão -->
+                    <span class="category-tag">
+                        Alimentação
+                        <span class="remove-btn" onclick="removeCategory(this)">×</span>
+                    </span>
+                    <span class="category-tag">
+                        Transporte
+                        <span class="remove-btn" onclick="removeCategory(this)">×</span>
+                    </span>
+                    <span class="category-tag">
+                        Moradia
+                        <span class="remove-btn" onclick="removeCategory(this)">×</span>
+                    </span>
+                    <span class="category-tag">
+                        Saúde
+                        <span class="remove-btn" onclick="removeCategory(this)">×</span>
+                    </span>
+                    <span class="category-tag">
+                        Lazer
+                        <span class="remove-btn" onclick="removeCategory(this)">×</span>
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Privacidade e Permissões -->
+        <div class="settings-section">
+            <h5><i class="bi bi-shield-lock"></i> Privacidade e Permissões</h5>
+            <p class="text-muted">Configure quem pode ver e fazer o quê</p>
+            
+            <form id="privacySettingsForm">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Visibilidade de Dados</h6>
+                        <div class="form-check form-switch mb-2">
+                            <input class="form-check-input" type="checkbox" id="sharedCategories" name="shared_categories" 
+                                   {% if family.settings.shared_categories %}checked{% endif %}>
+                            <label class="form-check-label" for="sharedCategories">
+                                Categorias compartilhadas
+                            </label>
+                        </div>
+                        <div class="form-check form-switch mb-2">
+                            <input class="form-check-input" type="checkbox" id="sharedBudgets" name="shared_budgets" checked>
+                            <label class="form-check-label" for="sharedBudgets">
+                                Orçamentos visíveis para todos
+                            </label>
+                        </div>
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="memberTransactionHistory" name="member_transaction_history">
+                            <label class="form-check-label" for="memberTransactionHistory">
+                                Histórico individual dos membros
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <h6>Permissões Padrão</h6>
+                        <div class="mb-3">
+                            <label for="defaultRole" class="form-label">Papel padrão para novos membros</label>
+                            <select class="form-select" id="defaultRole" name="default_member_role">
+                                <option value="viewer">Visualizador</option>
+                                <option value="member" selected>Membro</option>
+                                <option value="admin">Administrador</option>
+                            </select>
+                        </div>
+                        <div class="form-check form-switch mb-2">
+                            <input class="form-check-input" type="checkbox" id="requireApproval" name="require_approval_for_big_transactions">
+                            <label class="form-check-label" for="requireApproval">
+                                Aprovação para transações >R$ 1000
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-circle"></i> Salvar Configurações
+                </button>
+            </form>
+        </div>
+
+        <!-- Zona de Perigo -->
+        <div class="settings-section danger-zone">
+            <h5 class="text-danger"><i class="bi bi-exclamation-triangle"></i> Zona de Perigo</h5>
+            <p class="text-muted">Ações irreversíveis que afetam toda a família</p>
+            
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <h6>Resetar Dados Financeiros</h6>
+                    <p class="small text-muted">Remove todas as transações e orçamentos, mantém a família</p>
+                    <button class="btn btn-outline-warning btn-sm" onclick="confirmResetData()">
+                        <i class="bi bi-arrow-counterclockwise"></i> Resetar Dados
+                    </button>
+                </div>
+                
+                <div class="col-md-6 mb-3">
+                    <h6>Excluir Família</h6>
+                    <p class="small text-muted">Remove a família e todos os dados permanentemente</p>
+                    <button class="btn btn-outline-danger btn-sm" onclick="confirmDeleteFamily()">
+                        <i class="bi bi-trash"></i> Excluir Família
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Sidebar -->
+    <div class="col-lg-4">
+        <!-- Informações da Família -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-info-circle"></i> Informações</h6>
+            </div>
+            <div class="card-body">
+                <table class="table table-sm table-borderless">
+                    <tr>
+                        <td><strong>Criada em:</strong></td>
+                        <td>{{ format_date(family.created_at) }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Membros:</strong></td>
+                        <td>{{ family.members|length if family.members else 0 }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Criador:</strong></td>
+                        <td>{{ user.name if family.created_by == user._id else 'Outro membro' }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>ID:</strong></td>
+                        <td><code>{{ family._id }}</code></td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <!-- Backup e Exportação -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-download"></i> Backup e Exportação</h6>
+            </div>
+            <div class="card-body">
+                <div class="backup-info mb-3">
+                    <small>
+                        <i class="bi bi-info-circle"></i>
+                        <strong>Último backup:</strong> Hoje às 03:00<br>
+                        <strong>Próximo backup:</strong> Amanhã às 03:00
+                    </small>
+                </div>
+                
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-primary btn-sm" onclick="downloadBackup()">
+                        <i class="bi bi-download"></i> Baixar Backup Completo
+                    </button>
+                    <button class="btn btn-outline-secondary btn-sm" onclick="exportData('csv')">
+                        <i class="bi bi-file-earmark-spreadsheet"></i> Exportar CSV
+                    </button>
+                    <button class="btn btn-outline-secondary btn-sm" onclick="exportData('json')">
+                        <i class="bi bi-file-earmark-code"></i> Exportar JSON
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Estatísticas de Uso -->
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-graph-up"></i> Estatísticas de Uso</h6>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-6 mb-3">
+                        <div class="h4 text-primary" id="totalTransactions">-</div>
+                        <small class="text-muted">Transações</small>
+                    </div>
+                    <div class="col-6 mb-3">
+                        <div class="h4 text-success" id="totalBudgets">-</div>
+                        <small class="text-muted">Orçamentos</small>
+                    </div>
+                    <div class="col-6">
+                        <div class="h4 text-info" id="activeMembers">-</div>
+                        <small class="text-muted">Membros Ativos</small>
+                    </div>
+                    <div class="col-6">
+                        <div class="h4 text-warning" id="storageUsed">-</div>
+                        <small class="text-muted">MB Usados</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Confirmação para Reset -->
+<div class="modal fade" id="resetDataModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Resetar Dados Financeiros</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    <strong>Atenção!</strong> Esta ação não pode ser desfeita.
+                </div>
+                <p>Todos os seguintes dados serão removidos <strong>permanentemente</strong>:</p>
+                <ul>
+                    <li>Todas as transações da família</li>
+                    <li>Todos os orçamentos configurados</li>
+                    <li>Relatórios e históricos</li>
+                    <li>Categorias personalizadas</li>
+                </ul>
+                <p class="text-muted">Os membros da família e configurações serão mantidos.</p>
+                
+                <div class="mb-3">
+                    <label for="resetConfirmation" class="form-label">
+                        Digite "RESETAR" para confirmar:
+                    </label>
+                    <input type="text" class="form-control" id="resetConfirmation" 
+                           placeholder="Digite RESETAR">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-warning" id="confirmResetBtn" disabled>
+                    <i class="bi bi-arrow-counterclockwise"></i> Resetar Dados
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Confirmação para Excluir -->
+<div class="modal fade" id="deleteFamilyModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Excluir Família</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    <strong>PERIGO!</strong> Esta ação é irreversível.
+                </div>
+                <p>A família <strong>{{ family.name }}</strong> e todos os dados relacionados serão removidos permanentemente:</p>
+                <ul>
+                    <li>Todos os membros perderão acesso</li>
+                    <li>Todas as transações serão deletadas</li>
+                    <li>Todos os orçamentos serão perdidos</li>
+                    <li>Relatórios e históricos serão removidos</li>
+                    <li>Esta ação não pode ser desfeita</li>
+                </ul>
+                
+                <div class="mb-3">
+                    <label for="deleteConfirmation" class="form-label">
+                        Digite o nome da família "{{ family.name }}" para confirmar:
+                    </label>
+                    <input type="text" class="form-control" id="deleteConfirmation" 
+                           placeholder="Digite o nome exato da família">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn" disabled>
+                    <i class="bi bi-trash"></i> Excluir Família Permanentemente
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Atualizar preview da moeda
+    updateCurrencyPreview();
+    
+    // Event listeners
+    document.getElementById('currency').addEventListener('change', updateCurrencyPreview);
+    
+    // Validação para confirmações
+    document.getElementById('resetConfirmation').addEventListener('input', function() {
+        const btn = document.getElementById('confirmResetBtn');
+        btn.disabled = this.value !== 'RESETAR';
+    });
+    
+    document.getElementById('deleteConfirmation').addEventListener('input', function() {
+        const btn = document.getElementById('confirmDeleteBtn');
+        btn.disabled = this.value !== '{{ family.name }}';
+    });
+    
+    // Carregar estatísticas
+    loadUsageStats();
+    
+    // Event listeners dos formulários
+    setupFormHandlers();
+});
+
+function updateCurrencyPreview() {
+    const currency = document.getElementById('currency').value;
+    const preview = document.getElementById('currencyPreview');
+    
+    const symbols = {
+        'BRL': 'R$ 1.234,56',
+        'USD': '$ 1,234.56',
+        'EUR': '€ 1.234,56',
+        'GBP': '£ 1,234.56'
+    };
+    
+    preview.textContent = symbols[currency] || 'R$ 1.234,56';
+}
+
+function setupFormHandlers() {
+    // Formulário de informações básicas
+    document.getElementById('basicInfoForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        await saveSettings(this, 'basic');
+    });
+    
+    // Formulário de configurações financeiras
+    document.getElementById('financialSettingsForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        await saveSettings(this, 'financial');
+    });
+    
+    // Formulário de notificações
+    document.getElementById('notificationSettingsForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        await saveSettings(this, 'notifications');
+    });
+    
+    // Formulário de privacidade
+    document.getElementById('privacySettingsForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        await saveSettings(this, 'privacy');
+    });
+}
+
+async function saveSettings(form, type) {
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData.entries());
+    
+    // Incluir checkboxes não marcados
+    const checkboxes = form.querySelectorAll('input[type="checkbox"]');
+    checkboxes.forEach(checkbox => {
+        if (!data[checkbox.name]) {
+            data[checkbox.name] = false;
+        } else {
+            data[checkbox.name] = true;
+        }
+    });
+    
+    try {
+        const response = await fetch(window.location.href, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            FinanceDash.Notifications.success('Configurações salvas com sucesso!');
+        } else {
+            FinanceDash.Notifications.error(result.error || 'Erro ao salvar configurações');
+        }
+    } catch (error) {
+        FinanceDash.Notifications.error('Erro ao salvar configurações');
+    }
+}
+
+function addCategory() {
+    const input = document.getElementById('newCategory');
+    const categoryName = input.value.trim();
+    
+    if (!categoryName) {
+        FinanceDash.Notifications.warning('Digite o nome da categoria');
+        return;
+    }
+    
+    // Verificar se já existe
+    const existing = document.querySelector(`.category-tag:contains("${categoryName}")`);
+    if (existing) {
+        FinanceDash.Notifications.warning('Categoria já existe');
+        return;
+    }
+    
+    // Adicionar nova categoria
+    const categoriesList = document.getElementById('categoriesList');
+    const categoryElement = document.createElement('span');
+    categoryElement.className = 'category-tag';
+    categoryElement.innerHTML = `
+        ${categoryName}
+        <span class="remove-btn" onclick="removeCategory(this)">×</span>
+    `;
+    
+    categoriesList.appendChild(categoryElement);
+    input.value = '';
+    
+    FinanceDash.Notifications.success('Categoria adicionada!');
+}
+
+function removeCategory(element) {
+    if (confirm('Remover esta categoria? Transações existentes não serão afetadas.')) {
+        element.parentElement.remove();
+        FinanceDash.Notifications.info('Categoria removida');
+    }
+}
+
+function confirmResetData() {
+    const modal = new bootstrap.Modal(document.getElementById('resetDataModal'));
+    modal.show();
+    
+    document.getElementById('confirmResetBtn').onclick = async function() {
+        await executeResetData();
+    };
+}
+
+function confirmDeleteFamily() {
+    const modal = new bootstrap.Modal(document.getElementById('deleteFamilyModal'));
+    modal.show();
+    
+    document.getElementById('confirmDeleteBtn').onclick = async function() {
+        await executeDeleteFamily();
+    };
+}
+
+async function executeResetData() {
+    try {
+        const response = await fetch('/family/reset_data/{{ family._id }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            FinanceDash.Notifications.success('Dados financeiros resetados com sucesso');
+            bootstrap.Modal.getInstance(document.getElementById('resetDataModal')).hide();
+            loadUsageStats();
+        } else {
+            FinanceDash.Notifications.error(result.error || 'Erro ao resetar dados');
+        }
+    } catch (error) {
+        FinanceDash.Notifications.error('Erro ao resetar dados');
+    }
+}
+
+async function executeDeleteFamily() {
+    try {
+        const response = await fetch('/family/delete/{{ family._id }}', {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            FinanceDash.Notifications.success('Família excluída com sucesso');
+            setTimeout(() => {
+                window.location.href = '/dashboard/overview';
+            }, 2000);
+        } else {
+            FinanceDash.Notifications.error(result.error || 'Erro ao excluir família');
+        }
+    } catch (error) {
+        FinanceDash.Notifications.error('Erro ao excluir família');
+    }
+}
+
+async function loadUsageStats() {
+    try {
+        const response = await fetch(`/family/api/stats/{{ family._id }}`);
+        const stats = await response.json();
+        
+        document.getElementById('totalTransactions').textContent = stats.transaction_count || 0;
+        document.getElementById('totalBudgets').textContent = stats.budget_count || 0;
+        document.getElementById('activeMembers').textContent = stats.active_members || 0;
+        document.getElementById('storageUsed').textContent = (stats.storage_mb || 0.1).toFixed(1);
+    } catch (error) {
+        console.error('Erro ao carregar estatísticas:', error);
+    }
+}
+
+function downloadBackup() {
+    window.location.href = `/family/backup/{{ family._id }}`;
+    FinanceDash.Notifications.info('Preparando backup...');
+}
+
+function exportData(format) {
+    window.location.href = `/family/export/{{ family._id }}?format=${format}`;
+    FinanceDash.Notifications.info(`Exportando dados em ${format.toUpperCase()}...`);
+}
+</script>
+{% endblock %}
